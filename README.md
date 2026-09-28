@@ -4,7 +4,7 @@ A full-stack, multi-user job application tracker: pipeline stages, referral cont
 
 **Stack:** React 19 · TypeScript · TanStack Query · Tailwind CSS · Node.js · Express 5 · PostgreSQL · Zod · Vitest
 
-**Live demo:** https://job-tracker--anoopnavile.replit.app (click **Try the live demo**)
+**Live demo:** https://job-tracker-chi-five-17.vercel.app (click **Try the live demo**)
 
 ![Dashboard](docs/screenshot.png)
 
