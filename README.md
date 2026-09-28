@@ -1,15 +1,19 @@
 # Job Tracker
 
-A full-stack job application tracker for managing a new-grad search: pipeline stages, referral contacts, and follow-up reminders on one dashboard.
+A full-stack, multi-user job application tracker: pipeline stages, referral contacts and follow-up reminders on one private dashboard. Recruiters and visitors can open a disposable demo sandbox in one click, no sign-up needed.
 
 **Stack:** React 19 · TypeScript · TanStack Query · Tailwind CSS · Node.js · Express 5 · PostgreSQL · Zod · Vitest
 
-**Live demo:** https://job-tracker--anoopnavile.replit.app
+**Live demo:** https://job-tracker--anoopnavile.replit.app (click **Try the live demo**)
 
 ![Dashboard](docs/screenshot.png)
 
+<img src="docs/sign-in.png" alt="Sign-in page" width="600">
+
 ## Features
 
+- **Accounts:** email + password sign-up and sign-in. Each user's applications are private to them.
+- **One-click demo sandbox:** every visitor gets their own throwaway account pre-filled with sample data. It's deleted automatically after 24 hours, so visitors can edit freely without touching anyone else's data.
 - **CRUD for applications:** company, role, posting link, status, applied date, notes
 - **Pipeline stages:** Wishlist → Applied → Interviewing → Offer / Rejected, changeable inline from the table
 - **Referral tracking:** contact name plus status (Not asked / Asked / Referred), searchable
@@ -29,17 +33,27 @@ job-tracker/
 │       ├── index.ts                    bootstrap: config → migrate → listen → graceful shutdown
 │       ├── config.ts                   env validated with Zod at startup
 │       ├── db/                         pg pool, forward-only migrations, seed data
-│       ├── middleware/                 validation + centralized error handling
-│       └── modules/applications/       routes → service → repository
+│       ├── lib/                        password hashing (scrypt), cookies, errors
+│       ├── middleware/                 auth + CSRF guards, validation, centralized errors
+│       └── modules/
+│           ├── auth/                   signup, login, sessions, demo sandboxes
+│           └── applications/           routes → service → repository (all queries user-scoped)
 └── client/   React SPA (Vite)
     └── src/
         ├── api/                        typed fetch client
-        ├── hooks/                      TanStack Query hooks, URL-synced filters
+        ├── pages/                      AuthPage (sign in / sign up / demo), Dashboard
+        ├── hooks/                      TanStack Query hooks (auth + data), URL-synced filters
         ├── components/                 table, summary, drawer form, dialogs
         └── lib/                        date + status helpers
 ```
 
 **Design decisions**
+
+- **Authentication, done by hand.** Passwords are hashed with scrypt, a memory-hard algorithm built into Node, using a per-user salt and constant-time comparison. Login runs a dummy hash for unknown emails, so response timing doesn't reveal which accounts exist. Sessions are 256-bit random tokens in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only a SHA-256 of each token is stored, so a leaked `sessions` table can't be used to log in. Logout deletes the session server-side.
+- **CSRF protection.** On top of SameSite cookies, every state-changing request must carry an `X-Requested-With` header. Browsers can't add that header to cross-site requests without a CORS preflight, which the API never approves.
+- **Per-user isolation at the data layer.** Every repository query filters by `user_id`. Another user's row returns `404`, not `403`, so ids can't be probed. Integration tests assert this for list, stats, read, update and delete.
+- **Ephemeral demo users.** Demo accounts carry an `expires_at`. Expired sessions stop working immediately, and an hourly sweep (also run whenever a demo starts) deletes expired users. Their data goes with them through `ON DELETE CASCADE`.
+- **Brute-force limits.** Credential endpoints allow 20 attempts per 15 minutes per IP, and demo creation 10 per hour.
 
 - **One contract, two runtimes.** The request schemas in `shared/` validate API input on the server _and_ power the React form (via `react-hook-form` + `zodResolver`), so client and server can't disagree about what's valid.
 - **Layered backend.** Routes handle HTTP only, the service holds business rules (404s, sample-data guard), and the repository owns all SQL. Every query is parameterized; sort columns come from a whitelist.
@@ -49,8 +63,15 @@ job-tracker/
 
 ## REST API
 
+All `/api/applications` routes require a signed-in session. Every non-GET request must send `X-Requested-With: fetch`.
+
 | Method   | Path                            | Description                                                          |
 | -------- | ------------------------------- | -------------------------------------------------------------------- |
+| `POST`   | `/api/auth/signup`              | Create an account and start a session                                |
+| `POST`   | `/api/auth/login`               | Sign in                                                              |
+| `POST`   | `/api/auth/demo`                | Start a 24-hour demo sandbox pre-filled with sample data             |
+| `POST`   | `/api/auth/logout`              | End the session (server-side)                                        |
+| `GET`    | `/api/auth/me`                  | Current user, or `401`                                               |
 | `GET`    | `/api/applications`             | List. Query: `status`, `q`, `overdue=true`, `today`, `sort`, `order` |
 | `GET`    | `/api/applications/stats`       | Counts per status + overdue follow-ups                               |
 | `GET`    | `/api/applications/:id`         | Get one                                                              |
@@ -70,7 +91,6 @@ Requires Node 20+ and Postgres (or Docker).
 cp .env.example .env
 docker compose up -d db            # or point DATABASE_URL at your own Postgres
 npm install
-npm run db:seed                    # optional: migrate + add sample data
 npm run dev                        # API on :3001, web on http://localhost:5173
 ```
 
@@ -83,9 +103,9 @@ createdb job_tracker_test          # once
 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/job_tracker_test npm test
 ```
 
-- **server:** integration tests with Supertest against a real Postgres (CRUD, validation, filters, overdue logic, sorting, 404/400 paths)
+- **server:** integration tests with Supertest against a real Postgres: auth (hashing, sessions, logout revocation, CSRF, demo expiry), cross-user isolation, CRUD, validation, filters, overdue logic and sorting
 - **shared:** schema normalization and follow-up classification
-- **client:** component tests for the table and mobile card list (overdue highlighting, inline status, sorting)
+- **client:** component tests for the table, the mobile card list and the auth page (overdue highlighting, inline status, sorting, shared-schema form validation)
 
 CI (GitHub Actions) runs lint, typecheck, tests against a Postgres service container, and a production build on every push.
 
@@ -100,7 +120,6 @@ Also deployable anywhere Docker runs: `docker compose --profile full up --build`
 
 ## Roadmap
 
-- Auth (per-user trackers) with row-level ownership
 - Kanban board view with drag-and-drop between stages
 - Email/calendar reminders for follow-ups
 - Pagination and full-text search for large lists

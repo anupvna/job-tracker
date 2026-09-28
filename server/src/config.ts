@@ -8,8 +8,6 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
-  /** Comma-separated list of allowed origins for CORS (only needed if the client is hosted elsewhere). */
-  CORS_ORIGIN: z.string().optional(),
 });
 
 export type Config = z.infer<typeof envSchema>;

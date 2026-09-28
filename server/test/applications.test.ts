@@ -1,22 +1,11 @@
-import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Application } from '@job-tracker/shared';
-import { createApp } from '../src/app.js';
 import { migrate } from '../src/db/migrate.js';
-import { createPool } from '../src/db/pool.js';
+import { client, db, resetDb, signedInClient, type Client } from './helpers.js';
 
-/*
- * Integration tests: real Express app + real Postgres (no mocks).
- * Point TEST_DATABASE_URL at a throwaway database; it is truncated between tests.
- */
-const connectionString =
-  process.env.TEST_DATABASE_URL ??
-  process.env.DATABASE_URL ??
-  'postgres://postgres:postgres@localhost:5432/job_tracker_test';
-
-const db = createPool({ connectionString });
-const app = createApp({ db, config: { NODE_ENV: 'test' } });
-const api = () => request(app);
+// Every test runs as a freshly signed-up user.
+let agent: Client;
+const api = () => agent;
 
 const TODAY = '2026-09-28';
 
@@ -30,11 +19,19 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await db.query('TRUNCATE applications');
+  await resetDb();
+  agent = await signedInClient();
 });
 
 afterAll(async () => {
   await db.end();
+});
+
+describe('authentication guard', () => {
+  it('rejects unauthenticated requests with 401', async () => {
+    const res = await client().get('/api/applications').expect(401);
+    expect(res.body.error.code).toBe('UNAUTHENTICATED');
+  });
 });
 
 describe('GET /api/health', () => {

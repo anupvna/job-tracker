@@ -14,41 +14,41 @@ import type { ApplicationsRepository } from './applications.repository.js';
 export class ApplicationsService {
   constructor(private readonly repo: ApplicationsRepository) {}
 
-  list(query: ListApplicationsQuery): Promise<Application[]> {
-    return this.repo.list({ ...query, today: query.today ?? todayISO() });
+  list(userId: string, query: ListApplicationsQuery): Promise<Application[]> {
+    return this.repo.list(userId, { ...query, today: query.today ?? todayISO() });
   }
 
-  stats(today?: string): Promise<ApplicationStats> {
-    return this.repo.stats(today ?? todayISO());
+  stats(userId: string, today?: string): Promise<ApplicationStats> {
+    return this.repo.stats(userId, today ?? todayISO());
   }
 
-  async get(id: string): Promise<Application> {
-    const app = await this.repo.findById(id);
+  async get(userId: string, id: string): Promise<Application> {
+    const app = await this.repo.findById(userId, id);
     if (!app) throw HttpError.notFound('Application not found');
     return app;
   }
 
-  create(input: CreateApplication): Promise<Application> {
-    return this.repo.create(input);
+  create(userId: string, input: CreateApplication): Promise<Application> {
+    return this.repo.create(userId, input);
   }
 
-  async update(id: string, patch: UpdateApplication): Promise<Application> {
-    const app = await this.repo.update(id, patch);
+  async update(userId: string, id: string, patch: UpdateApplication): Promise<Application> {
+    const app = await this.repo.update(userId, id, patch);
     if (!app) throw HttpError.notFound('Application not found');
     return app;
   }
 
-  async remove(id: string): Promise<void> {
-    const deleted = await this.repo.delete(id);
+  async remove(userId: string, id: string): Promise<void> {
+    const deleted = await this.repo.delete(userId, id);
     if (!deleted) throw HttpError.notFound('Application not found');
   }
 
   /** Fill an empty tracker with realistic examples (powers the "Load sample data" button). */
-  async loadSampleData(): Promise<number> {
-    const { total } = await this.repo.stats(todayISO());
+  async loadSampleData(userId: string): Promise<number> {
+    const { total } = await this.repo.stats(userId, todayISO());
     if (total > 0) {
       throw new HttpError(409, 'NOT_EMPTY', 'Sample data can only be loaded into an empty tracker');
     }
-    return seed(this.repo);
+    return seed(this.repo, userId);
   }
 }

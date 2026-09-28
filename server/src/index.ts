@@ -21,6 +21,18 @@ async function main() {
     console.log(`[api] listening on http://localhost:${config.PORT} (${config.NODE_ENV})`);
   });
 
+  // Hourly sweep of expired sessions and demo sandboxes (also runs whenever a demo starts).
+  const purge = () =>
+    app.auth
+      .purgeExpired()
+      .then(({ sessions, demoUsers }) => {
+        if (sessions || demoUsers)
+          console.log(`[auth] purged ${sessions} sessions, ${demoUsers} demo users`);
+      })
+      .catch((err) => console.error('[auth] purge failed', err));
+  void purge();
+  setInterval(purge, 60 * 60 * 1000).unref();
+
   // Graceful shutdown so in-flight requests finish and DB connections close cleanly.
   const shutdown = (signal: string) => {
     console.log(`[api] ${signal} received, shutting down`);

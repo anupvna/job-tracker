@@ -1,21 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import compression from 'compression';
-import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import type { Config } from './config.js';
 import type { Db } from './db/pool.js';
+import { loadUser, requireAuth, requireCsrfHeader } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { ApplicationsRepository } from './modules/applications/applications.repository.js';
 import { applicationsRouter } from './modules/applications/applications.routes.js';
 import { ApplicationsService } from './modules/applications/applications.service.js';
+import { AuthRepository } from './modules/auth/auth.repository.js';
+import { authRouter } from './modules/auth/auth.routes.js';
+import { AuthService } from './modules/auth/auth.service.js';
 
 interface AppDeps {
   db: Db;
-  config: Pick<Config, 'NODE_ENV' | 'CORS_ORIGIN'>;
+  config: Pick<Config, 'NODE_ENV'>;
   /** Directory of the built React app to serve. Omit to run the API only. */
   clientDir?: string;
 }
@@ -29,13 +32,10 @@ export function createApp({ db, config, clientDir }: AppDeps) {
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(compression());
-  if (config.CORS_ORIGIN) {
-    app.use('/api', cors({ origin: config.CORS_ORIGIN.split(',').map((o) => o.trim()) }));
-  }
   app.use(express.json({ limit: '100kb' }));
   if (!isTest) app.use(morgan(config.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-  // No auth, so cap write traffic per IP to keep a public demo from being flooded.
+  // Cap write traffic per IP so the public demo can't be flooded.
   if (!isTest) {
     app.use(
       '/api',
@@ -55,8 +55,19 @@ export function createApp({ db, config, clientDir }: AppDeps) {
     res.json({ status: 'ok', uptime: Math.round(process.uptime()) });
   });
 
-  const service = new ApplicationsService(new ApplicationsRepository(db));
-  app.use('/api/applications', applicationsRouter(service));
+  const applicationsRepo = new ApplicationsRepository(db);
+  const auth = new AuthService(new AuthRepository(db), applicationsRepo);
+
+  app.use('/api', requireCsrfHeader, loadUser(auth));
+  app.use(
+    '/api/auth',
+    authRouter(auth, { secureCookies: config.NODE_ENV === 'production', rateLimit: !isTest }),
+  );
+  app.use(
+    '/api/applications',
+    requireAuth,
+    applicationsRouter(new ApplicationsService(applicationsRepo)),
+  );
   app.use('/api', notFoundHandler);
 
   // ---- Frontend (single-page app) ----
@@ -73,5 +84,5 @@ export function createApp({ db, config, clientDir }: AppDeps) {
   }
 
   app.use(errorHandler);
-  return app;
+  return Object.assign(app, { auth });
 }

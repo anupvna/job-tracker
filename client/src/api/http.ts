@@ -18,8 +18,11 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 export async function http<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
+    credentials: 'same-origin',
     headers: {
       Accept: 'application/json',
+      // Required by the API on writes; cross-site forms can't set custom headers (CSRF defence).
+      'X-Requested-With': 'fetch',
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...init.headers,
     },

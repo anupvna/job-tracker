@@ -80,8 +80,8 @@ export function sampleApplications(): CreateApplicationInput[] {
   ];
 }
 
-export async function seed(repo: ApplicationsRepository) {
+export async function seed(repo: ApplicationsRepository, userId: string) {
   const items = sampleApplications().map((a) => createApplicationSchema.parse(a));
-  for (const item of items) await repo.create(item);
+  for (const item of items) await repo.create(userId, item);
   return items.length;
 }
