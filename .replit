@@ -1,11 +1,11 @@
-modules = ["nodejs-20", "postgresql-16"]
+modules = ["nodejs-20", "web"]
 
 # "Run" builds the React app and serves it from Express on one port — same as production.
 # For hot-reload development use `npm run dev` in the Shell instead.
 run = "npm install --include=dev && npm run build && npm start"
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
 
 [env]
 PORT = "3001"
