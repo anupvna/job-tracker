@@ -8,6 +8,8 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /** Shared secret Vercel Cron sends as a Bearer token to the cleanup endpoint. */
+  CRON_SECRET: z.string().optional(),
 });
 
 export type Config = z.infer<typeof envSchema>;

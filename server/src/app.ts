@@ -18,7 +18,7 @@ import { AuthService } from './modules/auth/auth.service.js';
 
 interface AppDeps {
   db: Db;
-  config: Pick<Config, 'NODE_ENV'>;
+  config: Pick<Config, 'NODE_ENV'> & Partial<Pick<Config, 'CRON_SECRET'>>;
   /** Directory of the built React app to serve. Omit to run the API only. */
   clientDir?: string;
 }
@@ -57,6 +57,15 @@ export function createApp({ db, config, clientDir }: AppDeps) {
 
   const applicationsRepo = new ApplicationsRepository(db);
   const auth = new AuthService(new AuthRepository(db), applicationsRepo);
+
+  // Scheduled cleanup (Vercel Cron calls this daily; long-running servers also sweep hourly).
+  app.get('/api/cron/purge', async (req, res) => {
+    if (config.CRON_SECRET && req.get('authorization') !== `Bearer ${config.CRON_SECRET}`) {
+      res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid cron secret' } });
+      return;
+    }
+    res.json(await auth.purgeExpired());
+  });
 
   app.use('/api', requireCsrfHeader, loadUser(auth));
   app.use(

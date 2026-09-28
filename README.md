@@ -8,8 +8,6 @@ A full-stack, multi-user job application tracker: pipeline stages, referral cont
 
 ![Dashboard](docs/screenshot.png)
 
-<img src="docs/sign-in.png" alt="Sign-in page" width="600">
-
 ## Features
 
 - **Accounts:** email + password sign-up and sign-in. Each user's applications are private to them.
@@ -108,6 +106,22 @@ TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/job_tracker_test n
 - **client:** component tests for the table, the mobile card list and the auth page (overdue highlighting, inline status, sorting, shared-schema form validation)
 
 CI (GitHub Actions) runs lint, typecheck, tests against a Postgres service container, and a production build on every push.
+
+## Deploying to Vercel + Neon (free)
+
+The API runs as a Vercel serverless function and the React app is served from Vercel's CDN.
+`npm run build:vercel` writes both in Vercel's [Build Output API](https://vercel.com/docs/build-output-api) format (`scripts/build-vercel.mjs`), and `vercel.json` tells Vercel to run it.
+
+1. Create a free Postgres database at [neon.com](https://neon.com) and copy its connection string.
+2. On [vercel.com](https://vercel.com), choose **Add New → Project** and import this repo. Leave the settings as detected.
+3. Add environment variables: `DATABASE_URL` (the Neon string) and `CRON_SECRET` (any long random string).
+4. Deploy. Migrations run automatically on the first request, and every push to `main` redeploys.
+
+How it differs from a long-running server:
+
+- `server/src/vercel.ts` exports a `(req, res)` handler instead of calling `app.listen()`. The DB pool (3 connections) and migrations are set up once per warm instance.
+- Migrations run in one transaction under `pg_advisory_xact_lock`, so they're safe behind Neon's connection pooler and when several instances start at once.
+- A daily Vercel Cron job calls `GET /api/cron/purge` (authorized with `CRON_SECRET`) to delete expired sessions and demo sandboxes.
 
 ## Deploying to Replit
 

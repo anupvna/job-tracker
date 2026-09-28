@@ -7,11 +7,11 @@ pg.types.setTypeParser(DATE_OID, (value) => value);
 
 export type Db = pg.Pool;
 
-export function createPool(opts: { connectionString: string; ssl?: boolean }): Db {
+export function createPool(opts: { connectionString: string; ssl?: boolean; max?: number }): Db {
   const pool = new pg.Pool({
     connectionString: opts.connectionString,
     ssl: opts.ssl ? { rejectUnauthorized: false } : undefined,
-    max: 10,
+    max: opts.max ?? 10,
     idleTimeoutMillis: 30_000,
   });
   pool.on('error', (err) => {

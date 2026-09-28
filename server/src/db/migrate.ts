@@ -4,12 +4,18 @@ import { migrations as defaultMigrations, type Migration } from './migrations.js
 // Arbitrary constant so concurrent app instances don't run migrations at the same time.
 const MIGRATION_LOCK_ID = 727_001;
 
-/** Apply any pending migrations inside a transaction. Returns the ids that were applied. */
+/**
+ * Apply any pending migrations, all inside ONE transaction guarded by a transaction-scoped
+ * advisory lock. The lock is released automatically on COMMIT/ROLLBACK, which keeps this safe
+ * behind connection poolers (e.g. Neon's PgBouncer) that may hand each statement to a
+ * different server connection outside a transaction. Returns the ids that were applied.
+ */
 export async function migrate(db: Db, migrations: Migration[] = defaultMigrations) {
   const client = await db.connect();
   const applied: string[] = [];
   try {
-    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK_ID]);
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id         text PRIMARY KEY,
@@ -21,20 +27,20 @@ export async function migrate(db: Db, migrations: Migration[] = defaultMigration
 
     for (const m of migrations) {
       if (done.has(m.id)) continue;
-      await client.query('BEGIN');
       try {
         await client.query(m.sql);
-        await client.query('INSERT INTO schema_migrations (id) VALUES ($1)', [m.id]);
-        await client.query('COMMIT');
-        applied.push(m.id);
       } catch (err) {
-        await client.query('ROLLBACK');
         throw new Error(`Migration ${m.id} failed: ${(err as Error).message}`);
       }
+      await client.query('INSERT INTO schema_migrations (id) VALUES ($1)', [m.id]);
+      applied.push(m.id);
     }
+    await client.query('COMMIT');
     return applied;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
   } finally {
-    await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]).catch(() => {});
     client.release();
   }
 }
