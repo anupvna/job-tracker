@@ -4,7 +4,7 @@ A full-stack job application tracker for managing a new-grad search: pipeline st
 
 **Stack:** React 19 · TypeScript · TanStack Query · Tailwind CSS · Node.js · Express 5 · PostgreSQL · Zod · Vitest
 
-**Live demo:** _add your Replit URL here_
+**Live demo:** https://job-tracker--anoopnavile.replit.app
 
 ![Dashboard](docs/screenshot.png)
 
