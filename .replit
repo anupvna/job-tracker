@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 
 # "Run" builds the React app and serves it from Express on one port — same as production.
 # For hot-reload development use `npm run dev` in the Shell instead.
@@ -19,3 +19,27 @@ externalPort = 80
 deploymentTarget = "autoscale"
 build = ["sh", "-c", "npm install --include=dev && npm run build"]
 run = ["sh", "-c", "npm start"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install --include=dev && npm run build && npm start"
+waitForPort = 3001
+
+[workflows.workflow.metadata]
+outputType = "console"
