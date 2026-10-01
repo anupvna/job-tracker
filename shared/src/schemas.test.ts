@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createApplicationSchema, updateApplicationSchema } from './schemas.js';
 import { getFollowUpState } from './followUp.js';
+import { signupFormSchema } from './auth.js';
 
 describe('createApplicationSchema', () => {
   it('applies defaults and normalizes empty strings to null', () => {
@@ -71,5 +72,23 @@ describe('getFollowUpState', () => {
     [{ followUpDate: null, status: 'applied' as const }, 'none'],
   ])('%o → %s', (app, expected) => {
     expect(getFollowUpState(app, today)).toBe(expected);
+  });
+});
+
+describe('signupFormSchema', () => {
+  const base = { name: 'Ada', email: 'ada@example.com', password: 'correct horse' };
+
+  it('accepts matching passwords', () => {
+    expect(signupFormSchema.safeParse({ ...base, confirmPassword: 'correct horse' }).success).toBe(
+      true,
+    );
+  });
+
+  it('flags a mismatch on the confirm field', () => {
+    const result = signupFormSchema.safeParse({ ...base, confirmPassword: 'correct hose' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({ path: ['confirmPassword'], message: "Passwords don't match" }),
+    ]);
   });
 });

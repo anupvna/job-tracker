@@ -38,7 +38,19 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required').max(AUTH_LIMITS.passwordMax),
 });
 
+/**
+ * The sign-up FORM: the API payload plus a confirmation field that must match.
+ * Only the browser uses this; `confirmPassword` is never sent to the server.
+ */
+export const signupFormSchema = signupSchema
+  .extend({ confirmPassword: z.string().min(1, 'Please re-enter your password') })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
+
 export type SignupInput = z.input<typeof signupSchema>;
+export type SignupFormInput = z.input<typeof signupFormSchema>;
 export type LoginInput = z.input<typeof loginSchema>;
 
 /** The signed-in user, as returned by GET /api/auth/me. */

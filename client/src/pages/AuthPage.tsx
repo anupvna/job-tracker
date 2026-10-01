@@ -1,5 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, signupSchema, type LoginInput, type SignupInput } from '@job-tracker/shared';
+import {
+  loginSchema,
+  signupFormSchema,
+  type LoginInput,
+  type SignupFormInput,
+} from '@job-tracker/shared';
 import { ArrowRight, BellRing, LoaderCircle, Lock, Sparkles, Users } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useForm, type FieldValues, type Path, type UseFormSetError } from 'react-hook-form';
@@ -7,6 +12,7 @@ import { toast } from 'sonner';
 import { ApiError } from '../api/http';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { useLogin, useSignup, useStartDemo } from '../hooks/useAuth';
 import { cn } from '../lib/cn';
 
@@ -140,11 +146,9 @@ function LoginForm() {
         />
       </Field>
       <Field label="Password" htmlFor="password" error={errors.password?.message}>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
-          className="input h-10"
           aria-invalid={!!errors.password || undefined}
           {...register('password')}
         />
@@ -161,14 +165,15 @@ function SignupForm() {
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<SignupInput>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', email: '', password: '' },
+  } = useForm<SignupFormInput>({
+    resolver: zodResolver(signupFormSchema),
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
   });
 
-  const submit = handleSubmit(async (values) => {
+  const submit = handleSubmit(async ({ name, email, password }) => {
     try {
-      await signup.mutateAsync(values);
+      // confirmPassword is only checked here in the browser; the API gets the three real fields.
+      await signup.mutateAsync({ name, email, password });
       toast.success('Account created');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_TAKEN') {
@@ -206,13 +211,23 @@ function SignupForm() {
         error={errors.password?.message}
         hint="At least 8 characters."
       >
-        <input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="new-password"
-          className="input h-10"
           aria-invalid={!!errors.password || undefined}
-          {...register('password')}
+          {...register('password', { deps: ['confirmPassword'] })}
+        />
+      </Field>
+      <Field
+        label="Confirm password"
+        htmlFor="confirmPassword"
+        error={errors.confirmPassword?.message}
+      >
+        <PasswordInput
+          id="confirmPassword"
+          autoComplete="new-password"
+          aria-invalid={!!errors.confirmPassword || undefined}
+          {...register('confirmPassword')}
         />
       </Field>
       <SubmitButton pending={isSubmitting}>Create account</SubmitButton>

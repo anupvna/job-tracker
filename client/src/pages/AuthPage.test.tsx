@@ -33,6 +33,69 @@ describe('AuthPage', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('requires the confirm password to match before calling the API', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    renderPage();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Sign up' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'correct horse' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), {
+      target: { value: 'correct hose' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    expect(await screen.findByText("Passwords don't match")).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('sends only name, email and password once the passwords match', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: '1',
+            name: 'Ada',
+            email: 'ada@example.com',
+            isDemo: false,
+            expiresAt: null,
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+    renderPage();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Sign up' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'correct horse' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), {
+      target: { value: 'correct horse' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe('/api/auth/signup');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      name: 'Ada',
+      email: 'ada@example.com',
+      password: 'correct horse',
+    });
+  });
+
+  it('can show and hide the password', () => {
+    renderPage();
+    const input = screen.getByLabelText('Password');
+    expect(input).toHaveAttribute('type', 'password');
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(input).toHaveAttribute('type', 'text');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(input).toHaveAttribute('type', 'password');
+  });
+
   it('starts a demo with the CSRF header', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
