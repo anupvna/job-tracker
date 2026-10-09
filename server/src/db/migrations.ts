@@ -115,4 +115,37 @@ export const migrations: Migration[] = [
         FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     `,
   },
+  {
+    // Phase 2 (study plans). Purely additive: two new tables.
+    id: '004_study_plans',
+    sql: /* sql */ `
+      -- One row per user per plan (e.g. 'neetcode150'). The day-by-day schedule is computed,
+      -- not stored, so changing pace or study days never leaves stale rows behind.
+      CREATE TABLE study_plans (
+        user_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        plan_key   text NOT NULL CHECK (char_length(plan_key) BETWEEN 1 AND 40),
+        pace       text NOT NULL CHECK (pace IN ('low', 'medium', 'high')),
+        study_days smallint[] NOT NULL
+                   CHECK (cardinality(study_days) BETWEEN 1 AND 7
+                          AND study_days <@ ARRAY[0, 1, 2, 3, 4, 5, 6]::smallint[]),
+        start_date date NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, plan_key)
+      );
+
+      CREATE TRIGGER study_plans_set_updated_at
+        BEFORE UPDATE ON study_plans
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+      -- Solved problems, independent of any plan (resetting a plan keeps your progress).
+      CREATE TABLE problem_progress (
+        user_id   uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        slug      text NOT NULL CHECK (char_length(slug) BETWEEN 1 AND 100),
+        solved_on date NOT NULL,
+        solved_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, slug)
+      );
+    `,
+  },
 ];

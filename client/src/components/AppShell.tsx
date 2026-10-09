@@ -6,6 +6,7 @@ import { useLogout } from '../hooks/useAuth';
 import { cn } from '../lib/cn';
 import {
   ROUTE_PATHS,
+  ROUTE_SECTION,
   ROUTE_TITLES,
   isKnownPath,
   navigate,
@@ -71,7 +72,7 @@ export function AppShell({
 
           <nav aria-label="Main" className="hidden h-full items-stretch gap-1 sm:flex">
             {NAV.map(({ route: r, icon: Icon }) => {
-              const active = r === route;
+              const active = r === ROUTE_SECTION[route];
               return (
                 <a
                   key={r}
@@ -133,7 +134,7 @@ export function AppShell({
       >
         <div className="grid h-16 grid-cols-2">
           {NAV.map(({ route: r, icon: Icon }) => {
-            const active = r === route;
+            const active = r === ROUTE_SECTION[route];
             return (
               <a
                 key={r}

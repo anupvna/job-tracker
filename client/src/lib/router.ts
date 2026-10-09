@@ -5,22 +5,32 @@ import { useSyncExternalStore } from 'react';
  * like react-router would be overkill. Paths are real URLs (no hash), which the
  * Express server and the Vercel config both already fall back to index.html for.
  */
-export type Route = 'applications' | 'prep';
+export type Route = 'applications' | 'prep' | 'neetcode';
 
 export const ROUTE_PATHS: Record<Route, string> = {
   applications: '/',
   prep: '/prep',
+  neetcode: '/prep/neetcode150',
 };
 
 export const ROUTE_TITLES: Record<Route, string> = {
   applications: 'Applications',
   prep: 'Prep',
+  neetcode: 'NeetCode 150',
+};
+
+/** Which top-level tab a page belongs to (sub-pages light up their parent tab). */
+export const ROUTE_SECTION: Record<Route, Route> = {
+  applications: 'applications',
+  prep: 'prep',
+  neetcode: 'prep',
 };
 
 /** Map a pathname to a page. Anything unknown falls back to Applications. */
 export function routeFromPath(pathname: string): Route {
   const path = pathname.replace(/\/+$/, '') || '/';
-  return path === ROUTE_PATHS.prep ? 'prep' : 'applications';
+  const match = (Object.keys(ROUTE_PATHS) as Route[]).find((r) => ROUTE_PATHS[r] === path);
+  return match ?? 'applications';
 }
 
 /** True when `pathname` is exactly one of our canonical paths. */

@@ -15,6 +15,8 @@ import { ApplicationsService } from './modules/applications/applications.service
 import { AuthRepository } from './modules/auth/auth.repository.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { AuthService } from './modules/auth/auth.service.js';
+import { StudyPlansRepository } from './modules/studyPlans/studyPlans.repository.js';
+import { progressRouter, studyPlansRouter } from './modules/studyPlans/studyPlans.routes.js';
 import { TasksRepository } from './modules/tasks/tasks.repository.js';
 import { tasksRouter } from './modules/tasks/tasks.routes.js';
 import { TasksService } from './modules/tasks/tasks.service.js';
@@ -60,7 +62,8 @@ export function createApp({ db, config, clientDir }: AppDeps) {
 
   const applicationsRepo = new ApplicationsRepository(db);
   const tasksRepo = new TasksRepository(db);
-  const auth = new AuthService(new AuthRepository(db), applicationsRepo, tasksRepo);
+  const studyPlansRepo = new StudyPlansRepository(db);
+  const auth = new AuthService(new AuthRepository(db), applicationsRepo, tasksRepo, studyPlansRepo);
 
   // Scheduled cleanup (Vercel Cron calls this daily; long-running servers also sweep hourly).
   app.get('/api/cron/purge', async (req, res) => {
@@ -82,6 +85,8 @@ export function createApp({ db, config, clientDir }: AppDeps) {
     applicationsRouter(new ApplicationsService(applicationsRepo)),
   );
   app.use('/api/tasks', requireAuth, tasksRouter(new TasksService(tasksRepo)));
+  app.use('/api/study-plans', requireAuth, studyPlansRouter(studyPlansRepo));
+  app.use('/api/progress', requireAuth, progressRouter(studyPlansRepo));
   app.use('/api', notFoundHandler);
 
   // ---- Frontend (single-page app) ----

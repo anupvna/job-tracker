@@ -19,7 +19,7 @@ on a phone.
 |---|---|---|
 | 0 | App shell: top nav (Applications / Prep), phone bottom tab bar, installable (web app manifest + icons) | Done |
 | 1 | Planner basics: quick add (`LC 2 mediums tomorrow #dsa !high`), Today / Upcoming / Someday / Done, tracker follow-ups shown in Today | Done |
-| 2 | NeetCode 150 study plan: pick pace (low / medium / high), study days and start date → day-by-day plan in roadmap order; topic checklists with progress; plan re-flows when a day is missed | Planned |
+| 2 | NeetCode 150 study plan: pick pace (low / medium / high), study days and start date → day-by-day plan in roadmap order; topic checklists with progress; plan re-flows when a day is missed | Done |
 | 3 | Spaced-repetition revision reminders (1, 3, 7, 14, 30 days; sooner when rated Hard), streaks + activity heatmap, goal countdown (May 2027) + weekly targets | Planned |
 | 4 | Job snapshot (saved job description via Greenhouse / Lever / Ashby public APIs, bookmarklet for other sites) + dead-posting detection in the daily cron | Planned |
 | 5 | Referral finder (warmest-first LinkedIn search links, message drafts, optional LinkedIn connections CSV) + outreach log with follow-up cadence | Planned |

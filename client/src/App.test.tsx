@@ -57,6 +57,7 @@ describe('router helpers', () => {
     expect(routeFromPath('/')).toBe('applications');
     expect(routeFromPath('/prep')).toBe('prep');
     expect(routeFromPath('/prep/')).toBe('prep');
+    expect(routeFromPath('/prep/neetcode150')).toBe('neetcode');
     expect(routeFromPath('/something-else')).toBe('applications');
     expect(isKnownPath('/prep')).toBe(true);
     expect(isKnownPath('/nope')).toBe(false);

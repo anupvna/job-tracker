@@ -7,8 +7,9 @@ import {
 } from '@job-tracker/shared';
 import { HttpError } from '../../lib/httpError.js';
 import { getDummyHash, hashPassword, verifyPassword } from '../../lib/password.js';
-import { seed, seedTasks } from '../../db/seed.js';
+import { seed, seedStudyPlan, seedTasks } from '../../db/seed.js';
 import type { ApplicationsRepository } from '../applications/applications.repository.js';
+import type { StudyPlansRepository } from '../studyPlans/studyPlans.repository.js';
 import type { TasksRepository } from '../tasks/tasks.repository.js';
 import { AuthRepository, UNIQUE_VIOLATION, type UserWithHash } from './auth.repository.js';
 
@@ -36,6 +37,7 @@ export class AuthService {
     private readonly repo: AuthRepository,
     private readonly applications: ApplicationsRepository,
     private readonly tasks: TasksRepository,
+    private readonly studyPlans: StudyPlansRepository,
   ) {}
 
   async signup(input: Required<SignupInput>): Promise<Session> {
@@ -71,6 +73,7 @@ export class AuthService {
     const user = await this.repo.createDemoUser(new Date(Date.now() + DEMO_TTL_MS));
     await seed(this.applications, user.id);
     await seedTasks(this.tasks, user.id);
+    await seedStudyPlan(this.studyPlans, user.id);
     return this.startSession(user, new Date(user.expiresAt!));
   }
 

@@ -1,10 +1,13 @@
 import {
   createApplicationSchema,
+  NEETCODE_150,
+  countStudyDays,
   createTaskSchema,
   type CreateApplicationInput,
   type CreateTaskInput,
 } from '@job-tracker/shared';
 import type { ApplicationsRepository } from '../modules/applications/applications.repository.js';
+import type { StudyPlansRepository } from '../modules/studyPlans/studyPlans.repository.js';
 import type { TasksRepository } from '../modules/tasks/tasks.repository.js';
 import { todayISO } from '../lib/dates.js';
 
@@ -109,4 +112,26 @@ export async function seedTasks(repo: TasksRepository, userId: string) {
   const items = sampleTasks().map((t) => createTaskSchema.parse(t));
   for (const item of items) await repo.create(userId, item);
   return items.length;
+}
+
+/**
+ * Demo sandboxes get a NeetCode 150 plan already in progress: started 12 days ago at a medium
+ * pace, a little behind, with one of today's problems done — so every part of the UI shows up.
+ */
+export async function seedStudyPlan(repo: StudyPlansRepository, userId: string) {
+  const studyDays = [1, 2, 3, 4, 5, 6];
+  const startDate = day(-12);
+  await repo.upsertPlan(userId, 'neetcode150', { pace: 'medium', studyDays, startDate });
+
+  // Solve 3 per study day up to yesterday, skipping two days, then one problem today.
+  const solved: { slug: string; on: string }[] = [];
+  let next = 0;
+  for (let offset = -12; offset < 0; offset++) {
+    const date = day(offset);
+    if (countStudyDays(date, date, studyDays) === 0 || offset === -4 || offset === -3) continue;
+    for (let i = 0; i < 3; i++) solved.push({ slug: NEETCODE_150[next++]!.slug, on: date });
+  }
+  solved.push({ slug: NEETCODE_150[next]!.slug, on: day(0) });
+  for (const s of solved) await repo.markSolved(userId, s.slug, s.on);
+  return solved.length;
 }

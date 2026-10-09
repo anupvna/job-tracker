@@ -4,9 +4,9 @@ import {
   type Task,
   type TaskView,
 } from '@job-tracker/shared';
-import { ListChecks } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { StudyPlanCard } from '../components/plan/StudyPlanCard';
 import { FollowUpsDue } from '../components/prep/FollowUpsDue';
 import { QuickAdd } from '../components/prep/QuickAdd';
 import { TaskEditor } from '../components/prep/TaskEditor';
@@ -190,6 +190,8 @@ export function PrepPage() {
         <p className="text-sm font-medium text-zinc-600">{longDate.format(new Date())}</p>
       </div>
 
+      <StudyPlanCard />
+
       <main className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs">
         <div className="border-b border-zinc-100 px-4 pt-4 pb-2">
           <QuickAdd onAdd={add} />
@@ -239,14 +241,6 @@ export function PrepPage() {
         </div>
       </main>
 
-      <aside className="flex items-start gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-3 text-sm">
-        <ListChecks className="mt-0.5 size-4 shrink-0 text-violet-600" aria-hidden />
-        <p className="text-zinc-600">
-          <span className="font-medium text-zinc-900">Coming next: NeetCode 150 plan.</span> Pick a
-          pace and get a day-by-day problem list that lands right here in Today, with revision
-          reminders and streaks.
-        </p>
-      </aside>
 
       <Drawer open={editing !== null} onClose={() => setEditing(null)} labelledBy="task-editor-title">
         {editing && (
