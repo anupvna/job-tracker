@@ -88,4 +88,31 @@ export const migrations: Migration[] = [
       CREATE INDEX applications_user_updated_idx ON applications (user_id, updated_at DESC);
     `,
   },
+  {
+    // Phase 1 (Prep planner). Purely additive: a new table, nothing existing is touched.
+    id: '003_tasks',
+    sql: /* sql */ `
+      CREATE TABLE tasks (
+        id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        title      text NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+        notes      text NOT NULL DEFAULT '' CHECK (char_length(notes) <= 2000),
+        due_date   date,
+        priority   text NOT NULL DEFAULT 'none'
+                   CHECK (priority IN ('none', 'low', 'medium', 'high')),
+        tags       text[] NOT NULL DEFAULT '{}' CHECK (cardinality(tags) <= 10),
+        done_at    timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      -- Open lists (today / upcoming / someday) filter on due_date; Done sorts by done_at.
+      CREATE INDEX tasks_user_open_due_idx ON tasks (user_id, due_date) WHERE done_at IS NULL;
+      CREATE INDEX tasks_user_done_idx ON tasks (user_id, done_at DESC) WHERE done_at IS NOT NULL;
+
+      CREATE TRIGGER tasks_set_updated_at
+        BEFORE UPDATE ON tasks
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    `,
+  },
 ];

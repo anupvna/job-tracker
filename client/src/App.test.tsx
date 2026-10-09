@@ -25,6 +25,8 @@ function mockApi() {
     if (url.startsWith('/api/auth/me')) return json(USER);
     if (url.startsWith('/api/applications/stats')) return json(STATS);
     if (url.startsWith('/api/applications')) return json([]);
+    if (url.startsWith('/api/tasks/counts')) return json({ today: 0, overdue: 0, upcoming: 0, someday: 0 });
+    if (url.startsWith('/api/tasks')) return json([]);
     return json({ error: { code: 'NOT_FOUND', message: 'Not found' } }, 404);
   });
 }

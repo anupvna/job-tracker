@@ -15,6 +15,9 @@ import { ApplicationsService } from './modules/applications/applications.service
 import { AuthRepository } from './modules/auth/auth.repository.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { AuthService } from './modules/auth/auth.service.js';
+import { TasksRepository } from './modules/tasks/tasks.repository.js';
+import { tasksRouter } from './modules/tasks/tasks.routes.js';
+import { TasksService } from './modules/tasks/tasks.service.js';
 
 interface AppDeps {
   db: Db;
@@ -56,7 +59,8 @@ export function createApp({ db, config, clientDir }: AppDeps) {
   });
 
   const applicationsRepo = new ApplicationsRepository(db);
-  const auth = new AuthService(new AuthRepository(db), applicationsRepo);
+  const tasksRepo = new TasksRepository(db);
+  const auth = new AuthService(new AuthRepository(db), applicationsRepo, tasksRepo);
 
   // Scheduled cleanup (Vercel Cron calls this daily; long-running servers also sweep hourly).
   app.get('/api/cron/purge', async (req, res) => {
@@ -77,6 +81,7 @@ export function createApp({ db, config, clientDir }: AppDeps) {
     requireAuth,
     applicationsRouter(new ApplicationsService(applicationsRepo)),
   );
+  app.use('/api/tasks', requireAuth, tasksRouter(new TasksService(tasksRepo)));
   app.use('/api', notFoundHandler);
 
   // ---- Frontend (single-page app) ----

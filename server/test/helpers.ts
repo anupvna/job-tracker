@@ -35,5 +35,5 @@ export async function signedInClient(name = 'Test User'): Promise<Client> {
 }
 
 export async function resetDb() {
-  await db.query('TRUNCATE users, sessions, applications CASCADE');
+  await db.query('TRUNCATE users, sessions, applications, tasks CASCADE');
 }

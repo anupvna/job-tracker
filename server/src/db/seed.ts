@@ -1,5 +1,11 @@
-import { createApplicationSchema, type CreateApplicationInput } from '@job-tracker/shared';
+import {
+  createApplicationSchema,
+  createTaskSchema,
+  type CreateApplicationInput,
+  type CreateTaskInput,
+} from '@job-tracker/shared';
 import type { ApplicationsRepository } from '../modules/applications/applications.repository.js';
+import type { TasksRepository } from '../modules/tasks/tasks.repository.js';
 import { todayISO } from '../lib/dates.js';
 
 /** ISO date `offset` days from today (negative = past). */
@@ -82,6 +88,25 @@ export function sampleApplications(): CreateApplicationInput[] {
 
 export async function seed(repo: ApplicationsRepository, userId: string) {
   const items = sampleApplications().map((a) => createApplicationSchema.parse(a));
+  for (const item of items) await repo.create(userId, item);
+  return items.length;
+}
+
+/** Prep planner examples for demo sandboxes. */
+export function sampleTasks(): CreateTaskInput[] {
+  return [
+    { title: 'Update resume with internship metrics', dueDate: day(-1), priority: 'medium', tags: ['resume'] },
+    { title: 'Solve 2 LeetCode mediums', dueDate: day(0), priority: 'high', tags: ['dsa'] },
+    { title: 'Revise Two Sum and Valid Anagram', dueDate: day(0), tags: ['dsa', 'revision'] },
+    { title: 'Mock interview with a classmate', dueDate: day(1), priority: 'high', tags: ['mock'] },
+    { title: 'Read a system design primer: load balancers', dueDate: day(3), tags: ['system-design'] },
+    { title: 'Write 3 STAR stories for behavioral rounds', priority: 'medium', tags: ['behavioral'] },
+    { title: 'Polish GitHub README for the job tracker project', tags: ['portfolio'] },
+  ];
+}
+
+export async function seedTasks(repo: TasksRepository, userId: string) {
+  const items = sampleTasks().map((t) => createTaskSchema.parse(t));
   for (const item of items) await repo.create(userId, item);
   return items.length;
 }

@@ -50,3 +50,29 @@ export function timeAgo(isoTimestamp: string, now = Date.now()): string {
   if (days < 7) return `${days}d ago`;
   return formatDate(todayISO(new Date(isoTimestamp)));
 }
+
+const weekdayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
+const weekdayLongFmt = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+});
+
+/** Short due label: "Today", "Tomorrow", "Yesterday", "Wed" (this week), else "Oct 20". */
+export function dueLabel(iso: string, today = todayISO()): string {
+  const diff = daysBetween(today, iso);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff > 1 && diff < 7) return weekdayFmt.format(new Date(`${iso}T00:00:00`));
+  return formatDate(iso, today);
+}
+
+/** Section heading for a day: "Tomorrow · Sat, Oct 10" or "Mon, Oct 12". */
+export function dayHeading(iso: string, today = todayISO()): string {
+  const full = weekdayLongFmt.format(new Date(`${iso}T00:00:00`));
+  const diff = daysBetween(today, iso);
+  if (diff === 0) return `Today · ${full}`;
+  if (diff === 1) return `Tomorrow · ${full}`;
+  return full;
+}

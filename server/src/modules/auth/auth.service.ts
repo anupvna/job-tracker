@@ -7,8 +7,9 @@ import {
 } from '@job-tracker/shared';
 import { HttpError } from '../../lib/httpError.js';
 import { getDummyHash, hashPassword, verifyPassword } from '../../lib/password.js';
-import { seed } from '../../db/seed.js';
+import { seed, seedTasks } from '../../db/seed.js';
 import type { ApplicationsRepository } from '../applications/applications.repository.js';
+import type { TasksRepository } from '../tasks/tasks.repository.js';
 import { AuthRepository, UNIQUE_VIOLATION, type UserWithHash } from './auth.repository.js';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -34,6 +35,7 @@ export class AuthService {
   constructor(
     private readonly repo: AuthRepository,
     private readonly applications: ApplicationsRepository,
+    private readonly tasks: TasksRepository,
   ) {}
 
   async signup(input: Required<SignupInput>): Promise<Session> {
@@ -68,6 +70,7 @@ export class AuthService {
     await this.repo.purgeExpired(); // opportunistic cleanup, so the table can't grow unbounded
     const user = await this.repo.createDemoUser(new Date(Date.now() + DEMO_TTL_MS));
     await seed(this.applications, user.id);
+    await seedTasks(this.tasks, user.id);
     return this.startSession(user, new Date(user.expiresAt!));
   }
 
