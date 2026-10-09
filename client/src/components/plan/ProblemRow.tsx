@@ -1,4 +1,14 @@
-import { leetcodeUrl, videoUrl, type Difficulty, type Problem } from '@job-tracker/shared';
+import {
+  MASTERED_STAGE,
+  REVIEW_RATINGS,
+  REVIEW_RATING_LABELS,
+  leetcodeUrl,
+  videoUrl,
+  type Difficulty,
+  type Problem,
+  type ProblemProgress,
+  type ReviewRating,
+} from '@job-tracker/shared';
 import { Check, ExternalLink, PlayCircle } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
@@ -22,10 +32,15 @@ interface Props {
   onToggle: (problem: Problem, solved: boolean) => void;
   /** Show the topic under the title (useful outside the topic list). */
   showTopic?: boolean;
+  /** Spaced-repetition state, for "Review due" / "Mastered" badges. */
+  progress?: ProblemProgress;
+  today?: string;
+  /** When set, a freshly solved problem shows Hard / OK / Easy chips. */
+  onRate?: (problem: Problem, rating: ReviewRating) => void;
 }
 
 /** One NeetCode problem: tick box, title, difficulty, and links out to LeetCode / the video. */
-export function ProblemRow({ problem, solved, onToggle, showTopic }: Props) {
+export function ProblemRow({ problem, solved, onToggle, showTopic, progress, today, onRate }: Props) {
   const video = videoUrl(problem.video);
   return (
     <li className="flex items-center gap-3 px-4 py-2.5">
@@ -58,7 +73,24 @@ export function ProblemRow({ problem, solved, onToggle, showTopic }: Props) {
         <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
           <DifficultyPill difficulty={problem.difficulty} />
           {showTopic && <span>{problem.topic}</span>}
+          {progress && progress.reviewStage >= MASTERED_STAGE && (
+            <span className="rounded-full bg-emerald-50 px-1.5 py-px text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+              Mastered
+            </span>
+          )}
+          {progress?.nextReviewOn && today && progress.nextReviewOn <= today && (
+            <span className="rounded-full bg-violet-50 px-1.5 py-px text-[11px] font-medium text-violet-700 ring-1 ring-violet-200">
+              Review due
+            </span>
+          )}
         </div>
+        {onRate && solved && progress && progress.reviewCount === 0 && (
+          <RatingChips
+            label="How was it?"
+            value={progress.rating}
+            onPick={(r) => onRate(problem, r)}
+          />
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">
@@ -86,5 +118,45 @@ export function ProblemRow({ problem, solved, onToggle, showTopic }: Props) {
         </a>
       </div>
     </li>
+  );
+}
+
+/** Hard / OK / Easy segmented choice. */
+export function RatingChips({
+  label,
+  value,
+  onPick,
+  disabled,
+}: {
+  label: string;
+  value?: ReviewRating | null;
+  onPick: (rating: ReviewRating) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div role="group" aria-label={label} className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+      <span className="text-zinc-500">{label}</span>
+      {REVIEW_RATINGS.map((r) => (
+        <button
+          key={r}
+          type="button"
+          disabled={disabled}
+          aria-pressed={value === r}
+          onClick={() => onPick(r)}
+          className={cn(
+            'rounded-md border px-2 py-0.5 font-medium transition-colors disabled:opacity-50',
+            value === r
+              ? r === 'hard'
+                ? 'border-red-300 bg-red-50 text-red-700'
+                : r === 'easy'
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                  : 'border-zinc-400 bg-zinc-100 text-zinc-800'
+              : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50',
+          )}
+        >
+          {REVIEW_RATING_LABELS[r]}
+        </button>
+      ))}
+    </div>
   );
 }

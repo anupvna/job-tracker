@@ -1,14 +1,15 @@
-import { type Problem } from '@job-tracker/shared';
+import { type Problem, type ReviewRating } from '@job-tracker/shared';
 import { ArrowRight, CalendarCheck, ChevronDown, Coffee, ListChecks, Settings2, Sparkles } from 'lucide-react';
 import { useState, type MouseEvent } from 'react';
 import { toast } from 'sonner';
-import { useStudyPlan, useToggleProblem } from '../../hooks/useStudyPlan';
+import { useRateProblem, useStudyPlan, useToggleProblem } from '../../hooks/useStudyPlan';
 import { cn } from '../../lib/cn';
 import { dayHeading, formatDate } from '../../lib/dates';
 import { navigate, ROUTE_PATHS } from '../../lib/router';
 import { Button, IconButton } from '../ui/Button';
 import { PlanStatus, ProgressBar } from './PlanStatus';
 import { ProblemRow } from './ProblemRow';
+import { RevisionList } from './RevisionList';
 import { usePlanEditor } from './PlanEditor';
 
 function openAll(e: MouseEvent<HTMLAnchorElement>) {
@@ -19,8 +20,9 @@ function openAll(e: MouseEvent<HTMLAnchorElement>) {
 
 /** The Prep tab's study-plan panel: today's problems, pace status and what's next. */
 export function StudyPlanCard() {
-  const { plan, schedule, today, isPending, isError } = useStudyPlan();
+  const { plan, schedule, progress, today, isPending, isError } = useStudyPlan();
   const toggle = useToggleProblem();
+  const rate = useRateProblem();
   const { openEditor, modals } = usePlanEditor();
   const [showNext, setShowNext] = useState(false);
 
@@ -32,6 +34,10 @@ export function StudyPlanCard() {
         onError: (err) => toast.error(err.message),
       },
     );
+  }
+
+  function onRate(problem: Problem, rating: ReviewRating) {
+    rate.mutate({ slug: problem.slug, rating }, { onError: (err) => toast.error(err.message) });
   }
 
   if (isPending) {
@@ -109,7 +115,7 @@ export function StudyPlanCard() {
       </div>
 
       {schedule.completed ? (
-        <Message icon={Sparkles} title="All 150 solved" body="Incredible work. Revision reminders arrive in the next update." />
+        <Message icon={Sparkles} title="All 150 solved" body="Incredible work. Keep up the revisions below so it sticks." />
       ) : schedule.today ? (
         <div>
           <h3 className="flex items-center justify-between bg-zinc-50 px-4 py-2 text-xs font-semibold tracking-wide text-zinc-500 uppercase sm:px-5">
@@ -126,7 +132,16 @@ export function StudyPlanCard() {
           )}
           <ul className="divide-y divide-zinc-100">
             {schedule.today.items.map(({ problem, solved }) => (
-              <ProblemRow key={problem.slug} problem={problem} solved={solved} onToggle={onToggle} showTopic />
+              <ProblemRow
+                key={problem.slug}
+                problem={problem}
+                solved={solved}
+                onToggle={onToggle}
+                showTopic
+                progress={progress.get(problem.slug)}
+                today={today}
+                onRate={onRate}
+              />
             ))}
           </ul>
         </div>
@@ -135,6 +150,8 @@ export function StudyPlanCard() {
       ) : (
         <Message icon={CalendarCheck} title={`Your plan starts ${formatDate(plan.startDate, today)}`} body="Here’s what your first days look like." />
       )}
+
+      <RevisionList progress={progress} today={today} />
 
       {next.length > 0 && !schedule.completed && (
         <div className="border-t border-zinc-100">

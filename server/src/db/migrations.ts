@@ -148,4 +148,45 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    // Phase 3 (revision reminders, streaks, goals). New nullable/defaulted columns + new tables.
+    id: '005_revision_and_goals',
+    sql: /* sql */ `
+      ALTER TABLE problem_progress
+        ADD COLUMN rating           text CHECK (rating IN ('hard', 'ok', 'easy')),
+        ADD COLUMN review_stage     smallint NOT NULL DEFAULT 0 CHECK (review_stage BETWEEN 0 AND 5),
+        ADD COLUMN next_review_on   date,
+        ADD COLUMN last_reviewed_on date,
+        ADD COLUMN review_count     integer NOT NULL DEFAULT 0 CHECK (review_count >= 0);
+
+      -- Problems solved before this feature existed: first review a week after solving.
+      UPDATE problem_progress SET review_stage = 2, next_review_on = solved_on + 7;
+
+      CREATE INDEX problem_progress_due_idx ON problem_progress (user_id, next_review_on)
+        WHERE next_review_on IS NOT NULL;
+
+      -- One row per review, for the activity heatmap and streaks.
+      CREATE TABLE problem_reviews (
+        id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id     uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        slug        text NOT NULL CHECK (char_length(slug) BETWEEN 1 AND 100),
+        reviewed_on date NOT NULL,
+        rating      text NOT NULL CHECK (rating IN ('hard', 'ok', 'easy')),
+        created_at  timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX problem_reviews_user_day_idx ON problem_reviews (user_id, reviewed_on);
+
+      CREATE TABLE prep_goals (
+        user_id             uuid PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+        target_date         date NOT NULL,
+        weekly_problems     smallint NOT NULL CHECK (weekly_problems BETWEEN 0 AND 100),
+        weekly_applications smallint NOT NULL CHECK (weekly_applications BETWEEN 0 AND 200),
+        created_at          timestamptz NOT NULL DEFAULT now(),
+        updated_at          timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TRIGGER prep_goals_set_updated_at
+        BEFORE UPDATE ON prep_goals
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    `,
+  },
 ];

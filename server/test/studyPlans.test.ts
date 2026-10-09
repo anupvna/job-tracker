@@ -61,10 +61,10 @@ describe('study plans API', () => {
       .put(`/api/progress/${TWO_SUM}`)
       .send({ solved: true, solvedOn: '2026-10-14' })
       .expect(200);
-    expect(again.body).toEqual({ slug: TWO_SUM, solvedOn: '2026-10-12' });
+    expect(again.body).toMatchObject({ slug: TWO_SUM, solvedOn: '2026-10-12' });
 
     let state = await agent.get('/api/study-plans/neetcode150').expect(200);
-    expect(state.body.progress).toEqual([{ slug: TWO_SUM, solvedOn: '2026-10-12' }]);
+    expect(state.body.progress).toMatchObject([{ slug: TWO_SUM, solvedOn: '2026-10-12' }]);
 
     await agent.put(`/api/progress/${TWO_SUM}`).send({ solved: false, solvedOn: '2026-10-14' }).expect(204);
     state = await agent.get('/api/study-plans/neetcode150').expect(200);

@@ -21,7 +21,11 @@ function renderWith(ui: ReactNode) {
 
 type Calls = { url: string; method: string; body: unknown }[];
 
-function mockApi(state: { plan: unknown; progress: { slug: string; solvedOn: string }[] }) {
+type P = { slug: string; solvedOn: string; [k: string]: unknown };
+const full = (p: P) => ({ rating: 'ok', reviewStage: 0, nextReviewOn: null, lastReviewedOn: null, reviewCount: 0, ...p });
+
+function mockApi(state: { plan: unknown; progress: P[] }) {
+  state.progress = state.progress.map(full);
   const calls: Calls = [];
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input);
@@ -33,11 +37,17 @@ function mockApi(state: { plan: unknown; progress: { slug: string; solvedOn: str
       state.plan = { planKey: 'neetcode150', ...body, createdAt: '', updatedAt: '' };
       return json(state.plan);
     }
-    if (url.startsWith('/api/progress/')) {
+    if (url.startsWith('/api/progress/') && !url.endsWith('/review')) {
       const slug = url.split('/').pop()!;
       state.progress = state.progress.filter((p) => p.slug !== slug);
-      if (body.solved) state.progress.push({ slug, solvedOn: body.solvedOn });
-      return body.solved ? json({ slug, solvedOn: body.solvedOn }) : new Response(null, { status: 204 });
+      if (body.solved) state.progress.push(full({ slug, solvedOn: body.solvedOn, rating: body.rating ?? 'ok', nextReviewOn: addDays(body.solvedOn, 1) }));
+      return body.solved ? json(state.progress.at(-1)) : new Response(null, { status: 204 });
+    }
+    if (url.startsWith('/api/progress/') && url.endsWith('/review')) {
+      const slug = url.split('/')[3]!;
+      const p = state.progress.find((x) => x.slug === slug)!;
+      Object.assign(p, { reviewCount: (p as { reviewCount?: number }).reviewCount! + 1, lastReviewedOn: body.reviewedOn, nextReviewOn: addDays(body.reviewedOn, 3), reviewStage: 1 });
+      return json(p);
     }
     return json({});
   });
@@ -116,6 +126,42 @@ describe('StudyPlanCard', () => {
       }),
     );
     expect(calls.some((c) => c.url.startsWith('/api/progress'))).toBe(false);
+  });
+});
+
+describe('revision', () => {
+  it("shows due reviews with the gap since solving and logs a rating", async () => {
+    const calls = mockApi({
+      plan: plan(),
+      progress: [{ slug: 'two-sum', solvedOn: addDays(today, -7), reviewStage: 2, nextReviewOn: today }],
+    });
+    renderWith(<StudyPlanCard />);
+    expect(await screen.findByText('1 due')).toBeInTheDocument();
+    expect(
+      screen.getByText((_, el) => el?.tagName === 'P' && /It’s been 1 week since you solved Two Sum — revise it\./.test(el.textContent ?? '')),
+    ).toBeInTheDocument();
+    const group = screen.getByRole('group', { name: /after revising/i });
+    fireEvent.click(within(group).getByRole('button', { name: 'Easy' }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.url.endsWith('/review'))).toEqual({
+        url: '/api/progress/two-sum/review',
+        method: 'POST',
+        body: { rating: 'easy', reviewedOn: today },
+      }),
+    );
+    await waitFor(() => expect(screen.queryByText('1 due')).not.toBeInTheDocument());
+  });
+
+  it('lets you rate a problem you just solved', async () => {
+    const calls = mockApi({ plan: plan(), progress: [] });
+    renderWith(<StudyPlanCard />);
+    const first = NEETCODE_150[0]!;
+    fireEvent.click(await screen.findByRole('checkbox', { name: `Mark “${first.title}” as solved` }));
+    const chips = await screen.findByRole('group', { name: 'How was it?' });
+    fireEvent.click(within(chips).getByRole('button', { name: 'Hard' }));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'PUT').at(-1)?.body).toEqual({ solved: true, solvedOn: today, rating: 'hard' }),
+    );
   });
 });
 

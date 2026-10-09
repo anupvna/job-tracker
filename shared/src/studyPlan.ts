@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { NEETCODE_150_SLUGS, type Problem } from './neetcode150.js';
 import { addDaysISO } from './quickAdd.js';
+import { REVIEW_RATINGS, type ReviewRating } from './revision.js';
 
 /*
  * Study plans: pick a pace and the days you study, and the plan lays the problem list out
@@ -48,6 +49,8 @@ export const planKeyParamSchema = z.object({ planKey: z.enum(PLAN_KEYS) });
 export const progressInputSchema = z.object({
   solved: z.boolean(),
   solvedOn: isoDate,
+  /** How it felt. Sets when the first review comes back; defaults to OK. */
+  rating: z.enum(REVIEW_RATINGS).optional(),
 });
 
 export const problemSlugParamSchema = z.object({
@@ -72,6 +75,14 @@ export interface ProblemProgress {
   slug: string;
   /** The user's local calendar date when it was marked solved. */
   solvedOn: string;
+  /** Rating given when solved (null for problems solved before ratings existed). */
+  rating: ReviewRating | null;
+  /** Spaced-repetition step: 0–4 active, 5 = mastered. */
+  reviewStage: number;
+  /** When it's next due for revision; null once mastered. */
+  nextReviewOn: string | null;
+  lastReviewedOn: string | null;
+  reviewCount: number;
 }
 
 export interface StudyPlanState {

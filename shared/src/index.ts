@@ -6,3 +6,5 @@ export * from './tasks.js';
 export * from './quickAdd.js';
 export * from './neetcode150.js';
 export * from './studyPlan.js';
+export * from './revision.js';
+export * from './momentum.js';

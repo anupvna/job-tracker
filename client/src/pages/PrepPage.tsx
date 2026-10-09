@@ -6,6 +6,7 @@ import {
 } from '@job-tracker/shared';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { MomentumCard } from '../components/momentum/MomentumCard';
 import { StudyPlanCard } from '../components/plan/StudyPlanCard';
 import { FollowUpsDue } from '../components/prep/FollowUpsDue';
 import { QuickAdd } from '../components/prep/QuickAdd';
@@ -189,6 +190,8 @@ export function PrepPage() {
         </div>
         <p className="text-sm font-medium text-zinc-600">{longDate.format(new Date())}</p>
       </div>
+
+      <MomentumCard />
 
       <StudyPlanCard />
 

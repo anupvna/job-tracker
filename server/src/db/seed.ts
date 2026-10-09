@@ -5,9 +5,11 @@ import {
   createTaskSchema,
   type CreateApplicationInput,
   type CreateTaskInput,
+  type ReviewRating,
 } from '@job-tracker/shared';
 import type { ApplicationsRepository } from '../modules/applications/applications.repository.js';
 import type { StudyPlansRepository } from '../modules/studyPlans/studyPlans.repository.js';
+import { ProgressService } from '../modules/studyPlans/studyPlans.service.js';
 import type { TasksRepository } from '../modules/tasks/tasks.repository.js';
 import { todayISO } from '../lib/dates.js';
 
@@ -116,22 +118,37 @@ export async function seedTasks(repo: TasksRepository, userId: string) {
 
 /**
  * Demo sandboxes get a NeetCode 150 plan already in progress: started 12 days ago at a medium
- * pace, a little behind, with one of today's problems done — so every part of the UI shows up.
+ * pace, a little behind, one of today's problems done, and a realistic revision history (some
+ * reviews kept up with, a few now due) — so every part of the Prep tab has something to show.
  */
 export async function seedStudyPlan(repo: StudyPlansRepository, userId: string) {
+  const progress = new ProgressService(repo);
   const studyDays = [1, 2, 3, 4, 5, 6];
   const startDate = day(-12);
+  const today = day(0);
+  const missed = new Set([day(-4), day(-3)]);
   await repo.upsertPlan(userId, 'neetcode150', { pace: 'medium', studyDays, startDate });
 
-  // Solve 3 per study day up to yesterday, skipping two days, then one problem today.
-  const solved: { slug: string; on: string }[] = [];
+  // Solve 3 per study day up to yesterday (skipping two days), then one problem today.
+  const solved: { slug: string; on: string; rating: ReviewRating }[] = [];
   let next = 0;
   for (let offset = -12; offset < 0; offset++) {
     const date = day(offset);
-    if (countStudyDays(date, date, studyDays) === 0 || offset === -4 || offset === -3) continue;
-    for (let i = 0; i < 3; i++) solved.push({ slug: NEETCODE_150[next++]!.slug, on: date });
+    if (countStudyDays(date, date, studyDays) === 0 || missed.has(date)) continue;
+    for (let i = 0; i < 3; i++) {
+      const rating: ReviewRating = next % 5 === 4 ? 'hard' : next % 4 === 3 ? 'easy' : 'ok';
+      solved.push({ slug: NEETCODE_150[next++]!.slug, on: date, rating });
+    }
   }
-  solved.push({ slug: NEETCODE_150[next]!.slug, on: day(0) });
-  for (const s of solved) await repo.markSolved(userId, s.slug, s.on);
+  solved.push({ slug: NEETCODE_150[next]!.slug, on: today, rating: 'ok' });
+
+  for (const s of solved) {
+    let state = await progress.solve(userId, s.slug, s.on, s.rating);
+    // Keep up with reviews on the days the "user" studied; anything landing today or on a
+    // missed day is left due.
+    while (state.nextReviewOn && state.nextReviewOn < today && !missed.has(state.nextReviewOn)) {
+      state = await progress.review(userId, s.slug, 'ok', state.nextReviewOn);
+    }
+  }
   return solved.length;
 }

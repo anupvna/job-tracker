@@ -16,7 +16,13 @@ import { AuthRepository } from './modules/auth/auth.repository.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { AuthService } from './modules/auth/auth.service.js';
 import { StudyPlansRepository } from './modules/studyPlans/studyPlans.repository.js';
-import { progressRouter, studyPlansRouter } from './modules/studyPlans/studyPlans.routes.js';
+import {
+  activityRouter,
+  goalsRouter,
+  progressRouter,
+  studyPlansRouter,
+} from './modules/studyPlans/studyPlans.routes.js';
+import { ProgressService } from './modules/studyPlans/studyPlans.service.js';
 import { TasksRepository } from './modules/tasks/tasks.repository.js';
 import { tasksRouter } from './modules/tasks/tasks.routes.js';
 import { TasksService } from './modules/tasks/tasks.service.js';
@@ -86,7 +92,13 @@ export function createApp({ db, config, clientDir }: AppDeps) {
   );
   app.use('/api/tasks', requireAuth, tasksRouter(new TasksService(tasksRepo)));
   app.use('/api/study-plans', requireAuth, studyPlansRouter(studyPlansRepo));
-  app.use('/api/progress', requireAuth, progressRouter(studyPlansRepo));
+  app.use(
+    '/api/progress',
+    requireAuth,
+    progressRouter(studyPlansRepo, new ProgressService(studyPlansRepo)),
+  );
+  app.use('/api/activity', requireAuth, activityRouter(studyPlansRepo));
+  app.use('/api/goals', requireAuth, goalsRouter(studyPlansRepo));
   app.use('/api', notFoundHandler);
 
   // ---- Frontend (single-page app) ----

@@ -27,7 +27,7 @@ function back(e: MouseEvent<HTMLAnchorElement>) {
 
 /** The full NeetCode 150 checklist, grouped by topic, with progress per topic. */
 export function NeetcodePage() {
-  const { plan, solved, schedule, today, isPending, isError, error, refetch } = useStudyPlan();
+  const { plan, solved, progress, schedule, today, isPending, isError, error, refetch } = useStudyPlan();
   const toggle = useToggleProblem();
   const { openEditor, modals } = usePlanEditor();
   const [hideSolved, setHideSolved] = useState(false);
@@ -164,7 +164,14 @@ export function NeetcodePage() {
                   {!isCollapsed && (
                     <ul id={id} className="divide-y divide-zinc-100 border-t border-zinc-100">
                       {visible.map((p) => (
-                        <ProblemRow key={p.slug} problem={p} solved={solved.has(p.slug)} onToggle={onToggle} />
+                        <ProblemRow
+                          key={p.slug}
+                          problem={p}
+                          solved={solved.has(p.slug)}
+                          onToggle={onToggle}
+                          progress={progress.get(p.slug)}
+                          today={today}
+                        />
                       ))}
                       {visible.length === 0 && <li className="px-4 py-3 text-sm text-zinc-500">All solved in this topic.</li>}
                     </ul>

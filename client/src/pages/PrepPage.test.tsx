@@ -36,6 +36,9 @@ function mockApi(data: { tasks?: unknown[]; apps?: unknown[] }, extra?: Handler)
     if (url.startsWith('/api/tasks/counts')) return json({ today: data.tasks?.length ?? 0, overdue: 0, upcoming: 0, someday: 0 });
     if (url.startsWith('/api/tasks?')) return json(url.includes('view=today') ? (data.tasks ?? []) : []);
     if (url.startsWith('/api/applications')) return json(data.apps ?? []);
+    if (url.startsWith('/api/activity')) return json([]);
+    if (url.startsWith('/api/goals')) return json({ targetDate: '2027-05-01', weeklyProblems: 15, weeklyApplications: 10, isDefault: true });
+    if (url.startsWith('/api/study-plans')) return json({ plan: null, progress: [] });
     return json({}, 200);
   });
 }
