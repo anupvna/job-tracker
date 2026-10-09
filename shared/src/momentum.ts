@@ -8,12 +8,13 @@ import { addDaysISO } from './quickAdd.js';
 
 const isoDate = z.iso.date({ message: 'Use a valid date (YYYY-MM-DD)' });
 
-export const GOAL_LIMITS = { weeklyProblems: 100, weeklyApplications: 200 } as const;
+export const GOAL_LIMITS = { weeklyProblems: 100, weeklyApplications: 200, weeklyReferrals: 100 } as const;
 
 export const DEFAULT_GOALS = {
   targetDate: '2027-05-01',
   weeklyProblems: 15,
   weeklyApplications: 10,
+  weeklyReferrals: 3,
 } as const;
 
 /** PUT /api/goals */
@@ -21,6 +22,8 @@ export const prepGoalsSchema = z.object({
   targetDate: isoDate,
   weeklyProblems: z.number().int().min(0).max(GOAL_LIMITS.weeklyProblems),
   weeklyApplications: z.number().int().min(0).max(GOAL_LIMITS.weeklyApplications),
+  /** Applications sent this week that came with a referral. */
+  weeklyReferrals: z.number().int().min(0).max(GOAL_LIMITS.weeklyReferrals).default(DEFAULT_GOALS.weeklyReferrals),
 });
 
 export type PrepGoalsInput = z.input<typeof prepGoalsSchema>;
@@ -29,6 +32,7 @@ export interface PrepGoals {
   targetDate: string;
   weeklyProblems: number;
   weeklyApplications: number;
+  weeklyReferrals: number;
   /** True when the user hasn't saved goals yet and these are the defaults. */
   isDefault: boolean;
 }

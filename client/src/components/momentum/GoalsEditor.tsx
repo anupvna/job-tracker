@@ -17,6 +17,7 @@ export function GoalsEditor({
   const [targetDate, setTargetDate] = useState(goals.targetDate);
   const [weeklyProblems, setWeeklyProblems] = useState(String(goals.weeklyProblems));
   const [weeklyApplications, setWeeklyApplications] = useState(String(goals.weeklyApplications));
+  const [weeklyReferrals, setWeeklyReferrals] = useState(String(goals.weeklyReferrals));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -26,6 +27,7 @@ export function GoalsEditor({
       targetDate,
       weeklyProblems: Number(weeklyProblems),
       weeklyApplications: Number(weeklyApplications),
+      weeklyReferrals: Number(weeklyReferrals),
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Check the values');
@@ -54,7 +56,8 @@ export function GoalsEditor({
         <Field label="Goal date (have an offer by)" htmlFor="goal-date">
           <input id="goal-date" type="date" className="input" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
         </Field>
-        <div className="grid grid-cols-2 gap-4">
+        <p className="text-xs text-zinc-500">Weekly targets (Monday–Sunday). Progress is tracked automatically from your Prep and Applications tabs.</p>
+        <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Problems per week" htmlFor="goal-problems">
             <input
               id="goal-problems"
@@ -77,6 +80,18 @@ export function GoalsEditor({
               className="input"
               value={weeklyApplications}
               onChange={(e) => setWeeklyApplications(e.target.value)}
+            />
+          </Field>
+          <Field label="With a referral" htmlFor="goal-referrals" hint="Applications marked Referred">
+            <input
+              id="goal-referrals"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={GOAL_LIMITS.weeklyReferrals}
+              className="input"
+              value={weeklyReferrals}
+              onChange={(e) => setWeeklyReferrals(e.target.value)}
             />
           </Field>
         </div>

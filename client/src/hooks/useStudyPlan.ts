@@ -158,11 +158,18 @@ export function useSavePlan() {
   });
 }
 
+/** Stop the plan; optionally also wipe solved problems and revision history. */
 export function useResetPlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => studyPlansApi.reset(PLAN),
-    onSuccess: () => qc.invalidateQueries({ queryKey: studyPlanKey }),
+    mutationFn: async ({ clearProgress }: { clearProgress: boolean }) => {
+      await studyPlansApi.reset(PLAN);
+      if (clearProgress) await studyPlansApi.clearProgress();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: studyPlanKey });
+      qc.invalidateQueries({ queryKey: activityKey });
+    },
   });
 }
 

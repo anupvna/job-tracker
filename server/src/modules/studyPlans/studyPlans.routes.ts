@@ -58,6 +58,11 @@ export function progressRouter(repo: StudyPlansRepository, progress: ProgressSer
     }
   });
 
+  // Clear all solved problems and revision history. Plans and tasks are untouched.
+  router.delete('/', async (req, res) => {
+    res.json(await repo.clearProgress(currentUser(req).id));
+  });
+
   router.post('/:slug/review', async (req, res) => {
     const { slug } = parseOrThrow(problemSlugParamSchema, req.params);
     const { rating, reviewedOn } = parseOrThrow(reviewInputSchema, req.body);

@@ -43,6 +43,15 @@ function mockApi(state: { plan: unknown; progress: P[] }) {
       if (body.solved) state.progress.push(full({ slug, solvedOn: body.solvedOn, rating: body.rating ?? 'ok', nextReviewOn: addDays(body.solvedOn, 1) }));
       return body.solved ? json(state.progress.at(-1)) : new Response(null, { status: 204 });
     }
+    if (url === '/api/study-plans/neetcode150' && method === 'DELETE') {
+      state.plan = null;
+      return new Response(null, { status: 204 });
+    }
+    if (url === '/api/progress' && method === 'DELETE') {
+      const problems = state.progress.length;
+      state.progress = [];
+      return json({ problems, reviews: 0 });
+    }
     if (url.startsWith('/api/progress/') && url.endsWith('/review')) {
       const slug = url.split('/')[3]!;
       const p = state.progress.find((x) => x.slug === slug)!;
@@ -162,6 +171,39 @@ describe('revision', () => {
     await waitFor(() =>
       expect(calls.filter((c) => c.method === 'PUT').at(-1)?.body).toEqual({ solved: true, solvedOn: today, rating: 'hard' }),
     );
+  });
+});
+
+describe('stopping a plan', () => {
+  async function stop(clear: boolean) {
+    const state = { plan: plan(), progress: [{ slug: 'two-sum', solvedOn: today }] as P[] };
+    const calls = mockApi(state);
+    renderWith(<StudyPlanCard />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit plan' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /stop plan/i }));
+    const confirm = await screen.findByRole('dialog', { name: /stop your neetcode 150 plan/i });
+    if (clear) fireEvent.click(within(confirm).getByRole('checkbox', { name: /also clear my progress/i }));
+    fireEvent.click(within(confirm).getByRole('button', { name: clear ? 'Stop and clear' : 'Stop plan' }));
+    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
+    await screen.findByRole('button', { name: /set up my plan/i });
+    return { calls, state };
+  }
+
+  it('keeps solved problems by default', async () => {
+    const { calls, state } = await stop(false);
+    expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.url)).toEqual(['/api/study-plans/neetcode150']);
+    expect(state.progress).toHaveLength(1);
+  });
+
+  it('can also clear progress', async () => {
+    const { calls, state } = await stop(true);
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.url)).toEqual([
+        '/api/study-plans/neetcode150',
+        '/api/progress',
+      ]),
+    );
+    expect(state.progress).toEqual([]);
   });
 });
 

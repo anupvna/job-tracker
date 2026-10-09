@@ -15,6 +15,10 @@ import { ApplicationsService } from './modules/applications/applications.service
 import { AuthRepository } from './modules/auth/auth.repository.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { AuthService } from './modules/auth/auth.service.js';
+import type { Fetcher } from './modules/postings/providers.js';
+import { SnapshotsRepository } from './modules/postings/snapshots.repository.js';
+import { jobPostingsRouter, snapshotRouter } from './modules/postings/snapshots.routes.js';
+import { SnapshotsService } from './modules/postings/snapshots.service.js';
 import { StudyPlansRepository } from './modules/studyPlans/studyPlans.repository.js';
 import {
   activityRouter,
@@ -32,10 +36,12 @@ interface AppDeps {
   config: Pick<Config, 'NODE_ENV'> & Partial<Pick<Config, 'CRON_SECRET'>>;
   /** Directory of the built React app to serve. Omit to run the API only. */
   clientDir?: string;
+  /** HTTP client for job-board APIs (tests inject a fake). */
+  fetcher?: Fetcher;
 }
 
 /** Build the Express app. Dependencies are injected so tests can supply their own DB. */
-export function createApp({ db, config, clientDir }: AppDeps) {
+export function createApp({ db, config, clientDir, fetcher }: AppDeps) {
   const app = express();
   const isTest = config.NODE_ENV === 'test';
 
@@ -69,7 +75,15 @@ export function createApp({ db, config, clientDir }: AppDeps) {
   const applicationsRepo = new ApplicationsRepository(db);
   const tasksRepo = new TasksRepository(db);
   const studyPlansRepo = new StudyPlansRepository(db);
-  const auth = new AuthService(new AuthRepository(db), applicationsRepo, tasksRepo, studyPlansRepo);
+  const snapshotsRepo = new SnapshotsRepository(db);
+  const snapshots = new SnapshotsService(snapshotsRepo, applicationsRepo, fetcher);
+  const auth = new AuthService(
+    new AuthRepository(db),
+    applicationsRepo,
+    tasksRepo,
+    studyPlansRepo,
+    snapshotsRepo,
+  );
 
   // Scheduled cleanup (Vercel Cron calls this daily; long-running servers also sweep hourly).
   app.get('/api/cron/purge', async (req, res) => {
@@ -77,7 +91,10 @@ export function createApp({ db, config, clientDir }: AppDeps) {
       res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Invalid cron secret' } });
       return;
     }
-    res.json(await auth.purgeExpired());
+    const purged = await auth.purgeExpired();
+    // A failing job board must never stop the cleanup from being reported.
+    const postings = await snapshots.checkDue().catch((err: Error) => ({ error: err.message }));
+    res.json({ ...purged, postings });
   });
 
   app.use('/api', requireCsrfHeader, loadUser(auth));
@@ -85,11 +102,13 @@ export function createApp({ db, config, clientDir }: AppDeps) {
     '/api/auth',
     authRouter(auth, { secureCookies: config.NODE_ENV === 'production', rateLimit: !isTest }),
   );
+  app.use('/api/applications', requireAuth, snapshotRouter(snapshots));
   app.use(
     '/api/applications',
     requireAuth,
     applicationsRouter(new ApplicationsService(applicationsRepo)),
   );
+  app.use('/api/job-postings', requireAuth, jobPostingsRouter(snapshots));
   app.use('/api/tasks', requireAuth, tasksRouter(new TasksService(tasksRepo)));
   app.use('/api/study-plans', requireAuth, studyPlansRouter(studyPlansRepo));
   app.use(
@@ -115,5 +134,5 @@ export function createApp({ db, config, clientDir }: AppDeps) {
   }
 
   app.use(errorHandler);
-  return Object.assign(app, { auth });
+  return Object.assign(app, { auth, snapshots });
 }

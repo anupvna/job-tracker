@@ -4,7 +4,7 @@ import {
   weekBounds,
   type PrepGoalsInput,
 } from '@job-tracker/shared';
-import { CalendarClock, Flame, Settings2, Target } from 'lucide-react';
+import { CalendarClock, Flame, Pencil, Settings2, Target } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { useApplicationsList } from '../../hooks/useApplications';
@@ -34,7 +34,9 @@ export function MomentumCard() {
   const week = weekBounds(today);
   const inWeek = (d: string | null) => d !== null && d >= week.start && d <= week.end;
   const solvedThisWeek = [...progress.values()].filter((p) => inWeek(p.solvedOn)).length;
-  const appliedThisWeek = (apps.data ?? []).filter((a) => a.status !== 'wishlist' && inWeek(a.appliedDate)).length;
+  const sentThisWeek = (apps.data ?? []).filter((a) => a.status !== 'wishlist' && inWeek(a.appliedDate));
+  const appliedThisWeek = sentThisWeek.length;
+  const referredThisWeek = sentThisWeek.filter((a) => a.referralStatus === 'referred').length;
 
   const g = goals.data;
   const left = g ? daysUntil(today, g.targetDate) : null;
@@ -98,11 +100,26 @@ export function MomentumCard() {
           )}
         </Tile>
 
-        <Tile icon={<Target className="size-4 text-emerald-600" aria-hidden />} label="This week" className="col-span-2 sm:col-span-1">
+        <Tile
+          icon={<Target className="size-4 text-emerald-600" aria-hidden />}
+          label="This week"
+          className="col-span-2 sm:col-span-1"
+          action={
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            >
+              <Pencil className="size-3" aria-hidden />
+              Edit targets
+            </button>
+          }
+        >
           {g ? (
             <div className="space-y-2">
               <Meter label="Problems" value={solvedThisWeek} target={g.weeklyProblems} />
               <Meter label="Applications" value={appliedThisWeek} target={g.weeklyApplications} />
+              <Meter label="With referral" value={referredThisWeek} target={g.weeklyReferrals} />
             </div>
           ) : (
             <div className="h-10 animate-pulse rounded bg-zinc-100" />

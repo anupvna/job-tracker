@@ -5,8 +5,9 @@ import {
   type Application,
   type ApplicationStatus,
   type SortField,
+  type SnapshotSummary,
 } from '@job-tracker/shared';
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { ArchiveX, ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../lib/cn';
 import { formatDate, timeAgo } from '../lib/dates';
@@ -24,6 +25,8 @@ interface Props {
   onEdit: (app: Application) => void;
   onDelete: (app: Application) => void;
   onStatusChange: (app: Application, status: ApplicationStatus) => void;
+  /** Saved-posting status per application id (shows a "Posting closed" badge). */
+  postings?: ReadonlyMap<string, SnapshotSummary>;
 }
 
 export function ApplicationsTable({
@@ -35,6 +38,7 @@ export function ApplicationsTable({
   onEdit,
   onDelete,
   onStatusChange,
+  postings,
 }: Props) {
   const header = (field: SortField, label: string, className?: string) => (
     <SortHeader
@@ -49,7 +53,13 @@ export function ApplicationsTable({
 
   return (
     <>
-      <MobileList rows={rows} today={today} onEdit={onEdit} onStatusChange={onStatusChange} />
+      <MobileList
+        rows={rows}
+        today={today}
+        onEdit={onEdit}
+        onStatusChange={onStatusChange}
+        postings={postings}
+      />
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[880px] border-separate border-spacing-0 text-left text-sm">
           <thead>
@@ -109,6 +119,7 @@ export function ApplicationsTable({
                         )}
                       </div>
                       <div className="truncate text-[13px] text-zinc-500">{app.role}</div>
+                      <ClosedBadge summary={postings?.get(app.id)} />
                     </div>
                   </Td>
                   <Td>
@@ -168,7 +179,8 @@ function MobileList({
   today,
   onEdit,
   onStatusChange,
-}: Pick<Props, 'rows' | 'today' | 'onEdit' | 'onStatusChange'>) {
+  postings,
+}: Pick<Props, 'rows' | 'today' | 'onEdit' | 'onStatusChange' | 'postings'>) {
   return (
     <ul className="divide-y divide-zinc-100 md:hidden">
       {rows.map((app) => {
@@ -186,6 +198,7 @@ function MobileList({
               <button type="button" onClick={() => onEdit(app)} className="min-w-0 text-left">
                 <div className="truncate font-semibold text-zinc-900">{app.company}</div>
                 <div className="truncate text-[13px] text-zinc-500">{app.role}</div>
+                <ClosedBadge summary={postings?.get(app.id)} />
               </button>
               <InlineStatusSelect app={app} onChange={(s) => onStatusChange(app, s)} />
             </div>
@@ -303,5 +316,19 @@ function InlineStatusSelect({
         ))}
       </select>
     </div>
+  );
+}
+
+/** Shown when the saved job posting has been taken down. */
+function ClosedBadge({ summary }: { summary: SnapshotSummary | undefined }) {
+  if (summary?.postingStatus !== 'closed') return null;
+  return (
+    <span
+      className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-px text-[11px] font-medium text-red-700 ring-1 ring-red-200"
+      title="The job board no longer lists this posting — it's probably filled. Your saved copy of the description is still in the application."
+    >
+      <ArchiveX className="size-3" aria-hidden />
+      Posting closed
+    </span>
   );
 }

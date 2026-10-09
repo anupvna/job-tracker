@@ -88,13 +88,37 @@ describe('activity', () => {
 describe('goals', () => {
   it('returns defaults until saved, then the saved values', async () => {
     const def = await agent.get('/api/goals').expect(200);
-    expect(def.body).toEqual({ targetDate: '2027-05-01', weeklyProblems: 15, weeklyApplications: 10, isDefault: true });
+    expect(def.body).toEqual({ targetDate: '2027-05-01', weeklyProblems: 15, weeklyApplications: 10, weeklyReferrals: 3, isDefault: true });
     const saved = await agent
       .put('/api/goals')
-      .send({ targetDate: '2027-04-15', weeklyProblems: 20, weeklyApplications: 12 })
+      .send({ targetDate: '2027-04-15', weeklyProblems: 20, weeklyApplications: 12, weeklyReferrals: 5 })
       .expect(200);
-    expect(saved.body).toEqual({ targetDate: '2027-04-15', weeklyProblems: 20, weeklyApplications: 12, isDefault: false });
+    expect(saved.body).toEqual({ targetDate: '2027-04-15', weeklyProblems: 20, weeklyApplications: 12, weeklyReferrals: 5, isDefault: false });
+    await agent.put('/api/goals').send({ targetDate: '2027-04-15', weeklyProblems: 20, weeklyApplications: 12, weeklyReferrals: 500 }).expect(400);
     await agent.put('/api/goals').send({ targetDate: 'soon', weeklyProblems: 20, weeklyApplications: 12 }).expect(400);
+  });
+});
+
+describe('clearing progress', () => {
+  it('forgets solved problems and reviews but keeps the plan, tasks and goals', async () => {
+    await agent.put('/api/study-plans/neetcode150').send({ pace: 'low', studyDays: [1], startDate: '2026-10-01' }).expect(200);
+    await solve('two-sum', '2026-10-01').expect(200);
+    await review('two-sum', '2026-10-02', 'ok').expect(200);
+    await agent.put('/api/goals').send({ targetDate: '2027-04-15', weeklyProblems: 20, weeklyApplications: 12 }).expect(200);
+    const res = await agent.delete('/api/progress').expect(200);
+    expect(res.body).toEqual({ problems: 1, reviews: 1 });
+    const state = await agent.get('/api/study-plans/neetcode150').expect(200);
+    expect(state.body.progress).toEqual([]);
+    expect(state.body.plan).not.toBeNull();
+    expect((await agent.get('/api/activity?from=2026-09-01&to=2026-10-09')).body).toEqual([]);
+    expect((await agent.get('/api/goals')).body.isDefault).toBe(false);
+  });
+
+  it("only clears the caller's own progress", async () => {
+    await solve('two-sum', '2026-10-01').expect(200);
+    const other = await signedInClient('Other');
+    await other.delete('/api/progress').expect(200);
+    expect((await agent.get('/api/study-plans/neetcode150')).body.progress).toHaveLength(1);
   });
 });
 

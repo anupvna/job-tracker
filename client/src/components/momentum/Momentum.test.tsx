@@ -11,7 +11,7 @@ function setup(activity: unknown[], progress: unknown[] = [], apps: unknown[] = 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
     if (url.startsWith('/api/activity')) return json(activity);
-    if (url.startsWith('/api/goals')) return json({ targetDate: addDays(today, 100), weeklyProblems: 10, weeklyApplications: 5, isDefault: true });
+    if (url.startsWith('/api/goals')) return json({ targetDate: addDays(today, 100), weeklyProblems: 10, weeklyApplications: 5, weeklyReferrals: 2, isDefault: true });
     if (url.startsWith('/api/study-plans')) return json({ plan: null, progress });
     if (url.startsWith('/api/applications')) return json(apps);
     return json({});
@@ -46,11 +46,17 @@ describe('MomentumCard', () => {
       [
         { id: '1', company: 'A', role: 'SWE', link: null, status: 'applied', appliedDate: today, followUpDate: null, notes: '', referralName: null, referralStatus: 'not_asked', createdAt: '', updatedAt: '' },
         { id: '2', company: 'B', role: 'SWE', link: null, status: 'wishlist', appliedDate: today, followUpDate: null, notes: '', referralName: null, referralStatus: 'not_asked', createdAt: '', updatedAt: '' },
+        { id: '3', company: 'C', role: 'SWE', link: null, status: 'interviewing', appliedDate: today, followUpDate: null, notes: '', referralName: 'Priya', referralStatus: 'referred', createdAt: '', updatedAt: '' },
       ],
     );
     expect(await screen.findByText(/to keep it going/)).toBeInTheDocument();
     const problems = await screen.findByRole('progressbar', { name: 'Problems this week' });
     expect(problems).toHaveAttribute('aria-valuenow', '1');
-    expect(within(screen.getByRole('region', { name: 'Momentum' })).getByRole('progressbar', { name: 'Applications this week' })).toHaveAttribute('aria-valuenow', '1');
+    const region = within(screen.getByRole('region', { name: 'Momentum' }));
+    expect(region.getByRole('progressbar', { name: 'Applications this week' })).toHaveAttribute('aria-valuenow', '2');
+    const referred = region.getByRole('progressbar', { name: 'With referral this week' });
+    expect(referred).toHaveAttribute('aria-valuenow', '1');
+    expect(referred).toHaveAttribute('aria-valuemax', '2');
+    expect(region.getByRole('button', { name: /edit targets/i })).toBeInTheDocument();
   });
 });

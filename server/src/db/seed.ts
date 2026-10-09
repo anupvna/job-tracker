@@ -10,6 +10,7 @@ import {
 import type { ApplicationsRepository } from '../modules/applications/applications.repository.js';
 import type { StudyPlansRepository } from '../modules/studyPlans/studyPlans.repository.js';
 import { ProgressService } from '../modules/studyPlans/studyPlans.service.js';
+import type { SnapshotsRepository } from '../modules/postings/snapshots.repository.js';
 import type { TasksRepository } from '../modules/tasks/tasks.repository.js';
 import { todayISO } from '../lib/dates.js';
 
@@ -66,9 +67,11 @@ export function sampleApplications(): CreateApplicationInput[] {
       company: 'Cloudflare',
       role: 'Systems Engineer, New Grad 2027',
       status: 'applied',
-      appliedDate: day(-8),
-      followUpDate: day(6),
-      referralStatus: 'not_asked',
+      appliedDate: day(0),
+      followUpDate: day(7),
+      notes: 'Referred by a former teammate from my internship.',
+      referralName: 'Sam Patel',
+      referralStatus: 'referred',
     },
     {
       company: 'Two Sigma',
@@ -151,4 +154,52 @@ export async function seedStudyPlan(repo: StudyPlansRepository, userId: string) 
     }
   }
   return solved.length;
+}
+
+/**
+ * Demo sandboxes: one application with a saved (pasted) job description, and one whose posting
+ * has "been taken down", so the badge and saved copy are visible. Demo users are never included
+ * in the real daily posting checks.
+ */
+export async function seedSnapshots(repo: SnapshotsRepository, apps: ApplicationsRepository, userId: string) {
+  const list = await apps.list(userId, { sort: 'createdAt', order: 'asc', today: day(0) });
+  const stripe = list.find((a) => a.company === 'Stripe');
+  const datadog = list.find((a) => a.company === 'Datadog');
+  if (stripe) {
+    await repo.saveManual(
+      userId,
+      stripe.id,
+      [
+        'Software Engineer, New Grad',
+        '',
+        'About the role',
+        'You will build and scale the systems that move money for millions of businesses.',
+        '',
+        'What you’ll do',
+        '• Design, build and operate backend services in Ruby, Java or Go',
+        '• Debug production issues across distributed systems',
+        '• Work closely with product and design on new features',
+        '',
+        'Who you are',
+        '• BS/MS in Computer Science or similar, graduating by mid-2027',
+        '• Strong fundamentals in data structures, algorithms and systems',
+        '• Internship experience building production software',
+      ].join('\n'),
+    );
+  }
+  if (datadog) {
+    await repo.saveFetched(userId, datadog.id, { source: 'greenhouse', board: 'datadog', id: '1000001' }, {
+      source: 'greenhouse',
+      company: 'Datadog',
+      title: 'Software Engineer I — Backend',
+      location: 'New York, NY',
+      description:
+        'Datadog is looking for new-grad backend engineers to work on high-throughput data pipelines.\n\n' +
+        'Requirements\n• Proficiency in Go, Python or Java\n• Understanding of distributed systems basics\n• Graduating in 2026–2027',
+      postedAt: null,
+      url: null,
+    });
+    await repo.recordCheck(datadog.id, 'missing');
+    await repo.recordCheck(datadog.id, 'missing');
+  }
 }

@@ -25,6 +25,9 @@ export const studyPlansApi = {
       body: JSON.stringify({ solved, solvedOn, ...(rating ? { rating } : {}) }),
     }),
 
+  /** Forget every solved problem and revision. */
+  clearProgress: () => http<{ problems: number; reviews: number }>('/api/progress', { method: 'DELETE' }),
+
   review: (slug: string, rating: ReviewRating, reviewedOn: string) =>
     http<ProblemProgress>(`/api/progress/${slug}/review`, {
       method: 'POST',

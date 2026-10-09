@@ -189,4 +189,40 @@ export const migrations: Migration[] = [
         FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     `,
   },
+  {
+    // Phase 4 (job snapshots + dead-posting detection) and a referral goal. Additive only.
+    id: '006_job_snapshots',
+    sql: /* sql */ `
+      ALTER TABLE prep_goals
+        ADD COLUMN weekly_referrals smallint NOT NULL DEFAULT 3
+          CHECK (weekly_referrals BETWEEN 0 AND 100);
+
+      -- A saved copy of each application's job posting, so it survives the posting being
+      -- taken down. One per application; deleted with it.
+      CREATE TABLE job_snapshots (
+        application_id   uuid PRIMARY KEY REFERENCES applications (id) ON DELETE CASCADE,
+        user_id          uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        source           text NOT NULL CHECK (source IN ('greenhouse', 'lever', 'ashby', 'manual')),
+        posting_board    text CHECK (char_length(posting_board) <= 100),
+        posting_id       text CHECK (char_length(posting_id) <= 100),
+        posting_region   text CHECK (posting_region IN ('eu')),
+        title            text CHECK (char_length(title) <= 300),
+        company          text CHECK (char_length(company) <= 300),
+        location         text CHECK (char_length(location) <= 300),
+        description      text NOT NULL DEFAULT '' CHECK (char_length(description) <= 100000),
+        posted_at        timestamptz,
+        fetched_at       timestamptz NOT NULL DEFAULT now(),
+        posting_status   text NOT NULL DEFAULT 'unknown'
+                         CHECK (posting_status IN ('open', 'closed', 'unknown')),
+        last_checked_at  timestamptz,
+        miss_count       smallint NOT NULL DEFAULT 0,
+        closed_at        timestamptz,
+        CHECK (source = 'manual' OR (posting_board IS NOT NULL AND posting_id IS NOT NULL))
+      );
+      CREATE INDEX job_snapshots_user_idx ON job_snapshots (user_id);
+      -- The daily checker picks the least recently checked open postings.
+      CREATE INDEX job_snapshots_check_idx ON job_snapshots (last_checked_at NULLS FIRST)
+        WHERE source <> 'manual' AND posting_status <> 'closed';
+    `,
+  },
 ];

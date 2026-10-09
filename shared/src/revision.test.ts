@@ -74,7 +74,7 @@ describe('momentum', () => {
     expect(activityQuerySchema.safeParse({ from: '2026-01-01', to: '2026-10-09' }).success).toBe(true);
     expect(activityQuerySchema.safeParse({ from: '2026-10-10', to: '2026-10-09' }).success).toBe(false);
     expect(activityQuerySchema.safeParse({ from: '2024-01-01', to: '2026-10-09' }).success).toBe(false);
-    expect(prepGoalsSchema.safeParse({ targetDate: '2027-05-01', weeklyProblems: 15, weeklyApplications: 10 }).success).toBe(true);
+    expect(prepGoalsSchema.parse({ targetDate: '2027-05-01', weeklyProblems: 15, weeklyApplications: 10 }).weeklyReferrals).toBe(3);
     expect(prepGoalsSchema.safeParse({ targetDate: '2027-05-01', weeklyProblems: -1, weeklyApplications: 10 }).success).toBe(false);
   });
 });

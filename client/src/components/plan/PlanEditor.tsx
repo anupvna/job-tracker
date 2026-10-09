@@ -13,6 +13,7 @@ export function usePlanEditor() {
   const reset = useResetPlan();
   const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [clearProgress, setClearProgress] = useState(false);
 
   async function onSave(input: StudyPlanInput) {
     try {
@@ -25,10 +26,19 @@ export function usePlanEditor() {
   }
 
   function onConfirmReset() {
-    reset.mutate(undefined, {
-      onSuccess: () => toast.success('Plan stopped. Your solved problems are kept.'),
-      onError: (err) => toast.error(err.message),
-    });
+    reset.mutate(
+      { clearProgress },
+      {
+        onSuccess: () =>
+          toast.success(
+            clearProgress
+              ? 'Plan stopped and progress cleared. You’re starting fresh.'
+              : 'Plan stopped. Your solved problems are kept.',
+          ),
+        onError: (err) => toast.error(err.message),
+      },
+    );
+    setClearProgress(false);
     setConfirmReset(false);
     setOpen(false);
   }
@@ -52,13 +62,27 @@ export function usePlanEditor() {
             Stop your NeetCode 150 plan?
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            The daily schedule goes away. Problems you’ve already solved stay ticked, so you can
-            start a new plan any time without losing progress.
+            The daily schedule goes away. By default, problems you’ve solved stay ticked (and keep
+            counting toward your streak and weekly target), so a new plan picks up where you left off.
           </p>
+          <label className="mt-4 flex items-start gap-2.5 rounded-lg border border-zinc-200 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={clearProgress}
+              onChange={(e) => setClearProgress(e.target.checked)}
+              className="mt-0.5 size-4 accent-red-600"
+            />
+            <span>
+              <span className="font-medium text-zinc-900">Also clear my progress</span>
+              <span className="block text-zinc-500">
+                Un-tick every solved problem and delete revision history. This can’t be undone.
+              </span>
+            </span>
+          </label>
           <div className="mt-5 flex justify-end gap-2">
             <Button onClick={() => setConfirmReset(false)}>Keep plan</Button>
             <Button variant="danger" onClick={onConfirmReset}>
-              Stop plan
+              {clearProgress ? 'Stop and clear' : 'Stop plan'}
             </Button>
           </div>
         </div>

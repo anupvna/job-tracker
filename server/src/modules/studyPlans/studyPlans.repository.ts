@@ -140,6 +140,17 @@ export class StudyPlansRepository {
     return rows[0] ? toProgress(rows[0]) : null;
   }
 
+  /** Forget every solved problem and review (the "start over" option when stopping a plan). */
+  async clearProgress(userId: string): Promise<{ problems: number; reviews: number }> {
+    const { rows } = await this.db.query<{ problems: number; reviews: number }>(
+      `WITH p AS (DELETE FROM problem_progress WHERE user_id = $1 RETURNING 1),
+            r AS (DELETE FROM problem_reviews WHERE user_id = $1 RETURNING 1)
+       SELECT (SELECT count(*) FROM p)::int AS problems, (SELECT count(*) FROM r)::int AS reviews`,
+      [userId],
+    );
+    return rows[0]!;
+  }
+
   async markUnsolved(userId: string, slug: string): Promise<void> {
     await this.db.query('DELETE FROM problem_progress WHERE user_id = $1 AND slug = $2', [
       userId,
@@ -195,7 +206,8 @@ export class StudyPlansRepository {
       target_date: string;
       weekly_problems: number;
       weekly_applications: number;
-    }>('SELECT target_date, weekly_problems, weekly_applications FROM prep_goals WHERE user_id = $1', [
+      weekly_referrals: number;
+    }>('SELECT target_date, weekly_problems, weekly_applications, weekly_referrals FROM prep_goals WHERE user_id = $1', [
       userId,
     ]);
     const r = rows[0];
@@ -204,19 +216,21 @@ export class StudyPlansRepository {
       targetDate: r.target_date,
       weeklyProblems: Number(r.weekly_problems),
       weeklyApplications: Number(r.weekly_applications),
+      weeklyReferrals: Number(r.weekly_referrals),
       isDefault: false,
     };
   }
 
   async saveGoals(userId: string, g: Required<PrepGoalsInput>): Promise<PrepGoals> {
     await this.db.query(
-      `INSERT INTO prep_goals (user_id, target_date, weekly_problems, weekly_applications)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO prep_goals (user_id, target_date, weekly_problems, weekly_applications, weekly_referrals)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id) DO UPDATE
          SET target_date = EXCLUDED.target_date,
              weekly_problems = EXCLUDED.weekly_problems,
-             weekly_applications = EXCLUDED.weekly_applications`,
-      [userId, g.targetDate, g.weeklyProblems, g.weeklyApplications],
+             weekly_applications = EXCLUDED.weekly_applications,
+             weekly_referrals = EXCLUDED.weekly_referrals`,
+      [userId, g.targetDate, g.weeklyProblems, g.weeklyApplications, g.weeklyReferrals],
     );
     return this.goals(userId);
   }

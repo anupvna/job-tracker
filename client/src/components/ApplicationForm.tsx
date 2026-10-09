@@ -5,13 +5,17 @@ import {
   REFERRAL_LABELS,
   REFERRAL_STATUSES,
   STATUS_LABELS,
+  POSTING_SOURCE_LABELS,
   createApplicationSchema,
+  parsePostingUrl,
   type Application,
   type CreateApplication,
   type CreateApplicationInput,
 } from '@job-tracker/shared';
-import { LoaderCircle, Trash2, X } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { LoaderCircle, Trash2, WandSparkles, X } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import { postingsApi } from '../api/postings';
 import { Controller, useForm, type Path } from 'react-hook-form';
 import { ApiError } from '../api/http';
 import { cn } from '../lib/cn';
@@ -25,6 +29,8 @@ interface Props {
   onSubmit: (values: CreateApplication) => Promise<unknown>;
   onCancel: () => void;
   onDelete?: () => void;
+  /** Extra content shown at the end of the form body (e.g. the saved job posting). */
+  extra?: ReactNode;
 }
 
 /** Form values mirror the API input; empty strings are normalized to null by the shared schema. */
@@ -48,7 +54,7 @@ const FOLLOW_UP_PRESETS = [
   { label: '+2 weeks', days: 14 },
 ];
 
-export function ApplicationForm({ initial, onSubmit, onCancel, onDelete }: Props) {
+export function ApplicationForm({ initial, onSubmit, onCancel, onDelete, extra }: Props) {
   const isEdit = Boolean(initial);
   const {
     register,
@@ -76,6 +82,34 @@ export function ApplicationForm({ initial, onSubmit, onCancel, onDelete }: Props
       }
     }
   });
+
+  // "Autofill from link" for Greenhouse / Lever / Ashby postings.
+  const linkValue = watch('link');
+  const postingRef = parsePostingUrl(typeof linkValue === 'string' ? linkValue : null);
+  const [autofilling, setAutofilling] = useState(false);
+
+  async function autofill() {
+    if (!postingRef || typeof linkValue !== 'string') return;
+    setAutofilling(true);
+    try {
+      const result = await postingsApi.lookup(linkValue);
+      if (!result.supported) return;
+      if (result.status === 'closed') {
+        toast.warning('That posting looks closed or the link is wrong — it isn’t on the job board.');
+        return;
+      }
+      const { posting } = result;
+      setValue('company', posting.company, { shouldDirty: true, shouldValidate: true });
+      setValue('role', posting.title.slice(0, LIMITS.role), { shouldDirty: true, shouldValidate: true });
+      toast.success(
+        `Filled from ${POSTING_SOURCE_LABELS[posting.source]}${posting.location ? ` · ${posting.location}` : ''}. A copy of the description is saved when you save.`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not read that posting');
+    } finally {
+      setAutofilling(false);
+    }
+  }
 
   // ⌘/Ctrl + Enter saves from anywhere in the form.
   useEffect(() => {
@@ -152,6 +186,16 @@ export function ApplicationForm({ initial, onSubmit, onCancel, onDelete }: Props
               {...register('link')}
               {...errorProps('link')}
             />
+            {postingRef && (
+              <Button size="sm" className="mt-1.5" onClick={autofill} disabled={autofilling}>
+                {autofilling ? (
+                  <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <WandSparkles className="size-3.5" aria-hidden />
+                )}
+                Autofill from {POSTING_SOURCE_LABELS[postingRef.source]}
+              </Button>
+            )}
           </Field>
           <Controller
             control={control}
@@ -321,6 +365,8 @@ export function ApplicationForm({ initial, onSubmit, onCancel, onDelete }: Props
             />
           </Field>
         </Section>
+
+        {extra}
       </div>
 
       {/* Footer */}
