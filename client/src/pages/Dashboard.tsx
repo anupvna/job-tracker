@@ -1,7 +1,6 @@
 import {
   STATUS_LABELS,
   type Application,
-  type AuthUser,
   type ApplicationStatus,
   type CreateApplication,
 } from '@job-tracker/shared';
@@ -10,7 +9,6 @@ import { toast } from 'sonner';
 import { ApplicationForm } from '../components/ApplicationForm';
 import { ApplicationsTable } from '../components/ApplicationsTable';
 import { ConfirmDelete } from '../components/ConfirmDelete';
-import { DemoBanner } from '../components/DemoBanner';
 import { Header } from '../components/Header';
 import { EmptyState, ErrorState, NoResults, TableSkeleton } from '../components/States';
 import { StatusSummary } from '../components/StatusSummary';
@@ -34,7 +32,7 @@ type DrawerState = { mode: 'create' } | { mode: 'edit'; app: Application } | nul
 const errorMessage = (err: unknown) =>
   err instanceof Error ? err.message : 'Something went wrong';
 
-export function Dashboard({ user }: { user: AuthUser }) {
+export function Dashboard() {
   const { filters, update, toggleSort, reset, isFiltered } = useFilters();
 
   // Search box is local state; the query only fires once typing pauses.
@@ -136,9 +134,8 @@ export function Dashboard({ user }: { user: AuthUser }) {
     );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-      <Header user={user} onAdd={openCreate} />
-      {user.isDemo && user.expiresAt && <DemoBanner expiresAt={user.expiresAt} />}
+    <div className="space-y-6">
+      <Header onAdd={openCreate} />
 
       <StatusSummary
         stats={stats.data}

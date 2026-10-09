@@ -70,6 +70,12 @@ writeFileSync(
           headers: { 'cache-control': 'public, max-age=31536000, immutable' },
           continue: true,
         },
+        // Serve the PWA manifest with its proper type so phones offer "Install app".
+        {
+          src: '^/manifest\\.webmanifest$',
+          headers: { 'content-type': 'application/manifest+json' },
+          continue: true,
+        },
         // Every API path goes to the single Express function (it sees the original URL).
         { src: '^/api(?:/.*)?$', dest: '/api' },
         // Real files (index.html, JS, CSS, favicon) are served as-is…

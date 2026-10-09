@@ -29,7 +29,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
-      <Toaster position="bottom-right" richColors closeButton />
+      <Toaster
+        position="bottom-right"
+        richColors
+        closeButton
+        // Keep toasts above the phone tab bar.
+        mobileOffset={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+      />
     </QueryClientProvider>
   </StrictMode>,
 );
